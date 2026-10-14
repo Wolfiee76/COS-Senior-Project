@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Traffic Simulation/Traffic Simulation.vcxproj" Id="271ca922-31cf-4b50-a01b-3faf97d80a21" />
+</Solution>
