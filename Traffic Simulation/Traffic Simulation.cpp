@@ -19,6 +19,10 @@ const double road_length = 1000.0;	// for this test the one-waay street is 1km l
 const double dt = 0.1;		// one tick equals 0.1 seconds in the simmulation. DT - delta time
 const double t_end = 120.0;		// This is the end time of the simulatio | might be increased, further test needed and decision
 
+const bool animate = true;
+const int road_chars = 70;	// Width of the road
+const int frame_delay_ms = 30;	// Pause per tick
+
 struct Vehicle
 {
 	int id;
@@ -34,9 +38,9 @@ double kmh(double ms) { return ms * 3.6; }
 double idm(const Vehicle& me, const Vehicle* lead)
 {
 	double freeterm = 1.0 - std::pow(me.v / me.v0, 4);
-	if (!lead) return a_max * freeterm;
+	if(!lead) return a_max * freeterm;
 
-	double gap = std::max(lead->x - me.x - length, 00.1);
+	double gap = std::max(lead->x - me.x - length, 0.01);
 	double dv = me.v - lead->v;	// positive = closing in
 	double sStar = s0 + me.v * t_hw + me.v * dv / (2.0 * std::sqrt(a_max * b));
 	return a_max * (freeterm - std::pow(sStar / gap, 2));
@@ -45,12 +49,38 @@ double idm(const Vehicle& me, const Vehicle* lead)
 // This is for the nearest car which is ahead of me on the same lane/road
 const Vehicle* findLead(const std::vector<Vehicle>& cars, const Vehicle& me) {
 	const Vehicle* best = nullptr;		// closes car ahead found
-	for (const auto& c : cars) {
-		if (!c.active || c.id == me.id || c.x <= me.x) continue;
-		if (!best || c.x < best ->x) best = &c;
+	for(const auto& c : cars) {
+		if(!c.active || c.id == me.id || c.x <= me.x) continue;
+		if(!best || c.x < best ->x) best = &c;
 	}
 	return best;
+
 }
+
+	// This is how the road looks like for the first ever test of the program.
+	void drawFrame(double t, const std::vector<Vehicle>& cars, const Vehicle* lead)
+	{
+		char road[road_chars + 1];	// The road is displated as text
+		std::fill(road, road + road_chars, '.');	// Empty roaad
+		road[road_chars] = '\0';
+		for (const auto& c : cars)
+		{
+			if (!c.active) continue;	// Cars which already despawned are not shown on the road anymore.
+			int pos = std::min(road_chars - 1, (int)(c.x / road_length * road_chars));
+			road[pos] = (char)('0' + c.id);
+		}
+
+		double gap = (cars[1].active && lead) ? lead ->x - cars [1].x - length : 0.0;	// Gap between car 1 and car 2
+		std::printf("\rt=%5.1fs |%s| v0=%4.1f v1=%4.1f km/h gap=%5.1fm", t, road,
+			// This is for the speed of both cars displaayed in KPH
+			cars[0].active ? kmh(cars[0].v) : 0.0,
+			cars[1].active ? kmh(cars[1].v) : 0.0,
+			gap);
+
+		std::fflush(stdout);
+		std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
+	}
+
 
 int main()
 {
@@ -89,4 +119,30 @@ int main()
 			std::printf("*** Accident occured at t=%.1fs, cars 0 and 1 ***\n", t);
 		}
 
+		if (animate)	// Animation to draw the road each tick
+		{
+			drawFrame(t, cars, lead);
+		}
+
+		else if (std::fmod(t + 1e-9, 5.0) < dt)
+		{
+			std::printf("t=%5.1fs |", t);
+			for (const auto& c : cars)
+			{
+				if (c.active) std::printf("car%d x=%6.1fm v=%4.1fkm/h |", c.id, c.x, kmh(c.v));
+				else std::printf(" car%d done |", c.id);
+			}
+
+			if (cars[1].active && lead)
+				std::printf(" gap=%5.1fm", lead->x - cars[1].x - length);
+			std::printf("\n");
+		}
+
+		if (!cars[0].active && !cars[1].active) break;
+		
 	}
+
+	std::printf("Accidents: %d\n", accidents);	// Final result
+	return 0;
+
+}
