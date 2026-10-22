@@ -19,7 +19,8 @@ const double road_length = 1000.0;	// for this test the one-waay street is 1km l
 const double dt = 0.1;		// one tick equals 0.1 seconds in the simmulation. DT - delta time
 const double t_end = 120.0;		// This is the end time of the simulatio | might be increased, further test needed and decision
 
-const bool animate = true;
+const bool animate = true; 
+const bool test_distracted = true;	// Car 1 ignores the car ahead in order to test for a collision
 const int road_chars = 70;	// Width of the road
 const int frame_delay_ms = 30;	// Pause per tick
 
