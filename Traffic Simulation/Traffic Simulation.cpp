@@ -97,8 +97,15 @@ int main()
 	{
 		// Here the program will compute all accelerations from the current state
 		std::vector<double> acc(cars.size(), 0.0);
+
 		for (size_t i = 0; i < cars.size(); ++i)
-			if (cars[i].active) acc[i] = idm(cars[i], findLead(cars, cars[i]));
+		{
+			if (!cars[i].active) continue;
+			// The driver of Car 1 acts distracted from t=5s to t=25s. He doesn't notiice the car ahead which will cause collision.
+			bool distracted = test_distracted && (i == 1 && t >= 5.0 && t < 25.0);
+			const Vehicle* seen = distracted ? nullptr : findLead(cars, cars[i]);
+			acc[i] = idm(cars[i], seen);
+		}
 
 
 		// Applies the states from above. Each car moves every tick.
