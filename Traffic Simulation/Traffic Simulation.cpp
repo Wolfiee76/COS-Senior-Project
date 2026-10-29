@@ -99,6 +99,23 @@ struct Network
 
 			std::printf("\n");
 
+			if (r < rows - 1)	// Vertical streets
+			{
+				for (int line = 0; line < link_rows; ++line)
+				{
+					for (int c = 0; c < cols; ++c)
+					{
+						int n = r * cols + c + 1;
+						bool down = hasEdge(n, n + cols);       
+						bool up = hasEdge(n + cols, n);       
+						char d = !down ? ' ' : (line == link_rows - 1 ? 'v' : road_char);   
+						char u = !up ? ' ' : (line == 0 ? '^' : road_char);               
+						std::printf(" %c%c ", d, u);            
+						if (c < cols - 1) std::printf("%*s", link_len, "");
+					}
+					std::printf("\n");
+				}
+			}
 		}
 
 
