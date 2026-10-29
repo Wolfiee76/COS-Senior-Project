@@ -120,6 +120,14 @@ struct Network
 	}
 };
 
+ // This is for the FR 1 checker
+int failures = 0;
+void check(const char* name, bool ok)
+{
+	std::printf("[%s] %s\n", ok ? "PASS" : "FAIL", name);
+	if (!ok) ++failures;
+}
+
 
 int main()
 {
@@ -146,6 +154,9 @@ int main()
 
 	city.printMap();	// This loads the road network on the console as output.
 
+	// FR1 test to see if everything is met and in order.
+	check("12 intersections", city.nodeCount == 12);
 
+	// TO DO LATER: FINISH THE ACTUAL TEST FOR FR1 THEN DELETE THIS COMMENT.
 }
 	
