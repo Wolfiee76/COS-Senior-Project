@@ -117,8 +117,35 @@ struct Network
 				}
 			}
 		}
-
-
 	}
 };
+
+
+int main()
+{
+	Network city(12);
+
+	// These are the 17 streets each with their connection as in Table 1.
+	city.addTwoWay(1, 2, 1000, 80);
+	city.addOneWay(2, 3, 1000, 50);
+	city.addOneWay(3, 6, 500, 30);
+	city.addOneWay(6, 9, 500, 50);
+	city.addOneWay(9, 12, 500, 30);
+	city.addTwoWay(12, 11, 1000, 80);
+	city.addOneWay(11, 10, 1000, 50);
+	city.addOneWay(10, 7, 500, 50);
+	city.addOneWay(7, 4, 500, 50);
+	city.addOneWay(4, 1, 500, 50);
+	city.addTwoWay(2, 5, 500, 40);
+	city.addTwoWay(4, 5, 1000, 30);
+	city.addTwoWay(5, 6, 1000, 30);
+	city.addTwoWay(5, 8, 500, 30);
+	city.addTwoWay(7, 8, 1000, 30);
+	city.addTwoWay(8, 9, 1000, 30);
+	city.addTwoWay(8, 11, 500, 40);
+
+	city.printMap();	// This loads the road network on the console as output.
+
+
+}
 	
