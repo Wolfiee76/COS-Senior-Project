@@ -51,16 +51,41 @@ struct Network
 		addOneWay(b, a, length_m, limit_kmh);	// b goes to a
 	}
 
-	// FOR ME TO DO LATER OR TMRW: How many intersections can be reached beginning form the spawn node
+	// How many intersections can be reached beginning form the spawn node
 	int reachableFrom(int start) const
 	{
-		return 0;
+		std::vector<bool> seen(nodeCount + 1, false);   // "seen[n]" becomes true once intersection n has been found
+		std::vector<int> toVisit;                       // Intersections that need to be looked at.
+		toVisit.push_back(start);
+		seen[start] = true;
+		int count = 0;
+
+		while (!toVisit.empty())
+		{
+			int u = toVisit.back();      // Takes one intersection from the list
+			toVisit.pop_back();
+			++count;                     // It's reachable, so count it
+
+			for (int idx : outgoing[u])		//Looks at every street before leaving it
+			{
+				int next = streets[idx].to;		// Where the street leads to?
+				if (!seen[next])                
+				{
+					seen[next] = true;
+					toVisit.push_back(next);
+				}
+			}
+		}
+
+		return count;
 	}
 
-	// FOR ME TO DO LATER OR TMRW: Are the streets strongly connected - every intersection can be rerached from every other one
+	 // Are the streets strongly connected - every intersection can be rerached from every other one.
 	bool isStronglyConnected() const
 	{
-		return false;
+		for (int n = 1; n <= nodeCount; n++)	// Tries every intersecion as a start point
+			if (reachableFrom(n) != nodeCount) return false;	// One of them can't reach everything, so no.
+		return true;
 	}
 
 	// A street that goes from a to be?
