@@ -149,15 +149,20 @@ struct Network
 const double tick_s = 0.1;     // One tick is equal to 0.1 seconds
 std::mt19937 rng(42);          // Random generator; FOR NOW MIGHT BE CHANGED LATERRRRRRRRRRRRRRRRRRRRRRR a fixed seed gives the same results every run, which helps benchmarking
 
-
+// This is how many ticccks passed before the next car appears.
 int randomIntervalTicks(double ratePerMinute)
 {
-	return 1;
+	std::exponential_distribution<double> gap(ratePerMinute / 60.0);	// This is because the distibution needs to have the rate per second.
+	int ticks = (int)std::lround(gap(rng) / tick_s);	// This is raandom gap converted into seconds.. The ticks are rounded to the nearest tick
+	return ticks < 1 ? 1 : ticks;		// It's never less than 1 ticck
 }
 
+// Random final destination that is not a spawn node.
 int randomDestination(int spawnNode, int nodeCount)
 {
-	return 0;
+	std::uniform_int_distribution<int> pick(1, nodeCount - 1);	// One number less than the max amt of nodes
+	int d = pick(rng);			// Picks random node from the 12
+	return d >= spawnNode ? d + 1 : d;
 }
 
 struct SpawnNode
@@ -218,6 +223,16 @@ int main()
 
 	return failures;	// If it's a 0 then all checks have passed
 
-	// Tests for FR2 (Vehicle Spawn).
+	// Tests for FR2 (Vehicle Spawn). TO DO: FINISH THE TEST TMRW.
+	double total = 0;
+	int shortest = 1000000;
+
+	for (int i = 0; i < 100000; ++i)
+	{
+		int t = randomIntervalTicks(10.0);       // 10 cars per minute
+		total += t;
+		if (t < shortest) shortest = t;
+	}
+
 }
 	
