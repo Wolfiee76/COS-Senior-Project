@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <random>
 
 // This is for the size of the streets once the program runs and 
 const int link_len = 24;   // Length of a horizontal street using characters.
@@ -144,6 +145,9 @@ struct Network
 		}
 	}
 };
+
+
+
 
  // This is for the FR 1 checker
 int failures = 0;
