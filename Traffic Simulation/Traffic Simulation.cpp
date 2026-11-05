@@ -154,9 +154,22 @@ int main()
 
 	city.printMap();	// This loads the road network on the console as output.
 
+	std::printf("\n");
+
 	// FR1 test to see if everything is met and in order.
 	check("12 intersections", city.nodeCount == 12);
+	check("26 directed edges", city.streets.size() == 26);
+	check("network is strongly connected", city.isStronglyConnected());
+	check("2->3 exists (one-way)", city.hasEdge(2, 3));
+	check("3->2 does not exist", !city.hasEdge(3, 2));
 
-	// TO DO LATER: FINISH THE ACTUAL TEST FOR FR1 THEN DELETE THIS COMMENT.
+	
+	// A negative test - 1->2->3 must NOT count as strongly connected
+	Network chain(3);
+	chain.addOneWay(1, 2, 500, 50);
+	chain.addOneWay(2, 3, 500, 50);
+	check("one-way chain is not strongly connected", !chain.isStronglyConnected());
+
+	return failures;	// If it's a 0 then all checks have passed
 }
 	
