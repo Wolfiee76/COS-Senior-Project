@@ -146,8 +146,25 @@ struct Network
 	}
 };
 
+const double tick_s = 0.1;     // One tick is equal to 0.1 seconds
+std::mt19937 rng(42);          // Random generator; FOR NOW MIGHT BE CHANGED LATERRRRRRRRRRRRRRRRRRRRRRR a fixed seed gives the same results every run, which helps benchmarking
 
 
+int randomIntervalTicks(double ratePerMinute)
+{
+	return 1;
+}
+
+int randomDestination(int spawnNode, int nodeCount)
+{
+	return 0;
+}
+
+struct SpawnNode
+{
+	int node;		// The intersections - 1, 5, 6, or 12
+	int nextSpawnTick;		// This is for when the next car is due
+};
 
  // This is for the FR 1 checker
 int failures = 0;
@@ -185,7 +202,7 @@ int main()
 
 	std::printf("\n");
 
-	// FR1 test to see if everything is met and in order.
+	// FR1 (Road Network Representation) test to see if everything is met and in order.
 	check("12 intersections", city.nodeCount == 12);
 	check("26 directed edges", city.streets.size() == 26);
 	check("network is strongly connected", city.isStronglyConnected());
@@ -200,5 +217,7 @@ int main()
 	check("one-way chain is not strongly connected", !chain.isStronglyConnected());
 
 	return failures;	// If it's a 0 then all checks have passed
+
+	// Tests for FR2 (Vehicle Spawn).
 }
 	
