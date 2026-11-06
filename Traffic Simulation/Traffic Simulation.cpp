@@ -91,10 +91,16 @@ struct Network
 	// A street that goes from a to be?
 	bool hasEdge(int a, int b) const
 	{
-		for (int idx : outgoing[a])
-			if (streets[idx].to == b) return true;
-		return false;
+		return findStreet(a, b) != -1;
 	}
+
+	int findStreet(int a, int b) const
+	{
+		for (int idx : outgoing[a])
+			if (streets[idx].to == b) return idx;
+		return -1;
+	}
+
 
 	// This here will draw/ display the road network on the console once the program starts to run
 	void printMap(int cols = 3) const
@@ -213,14 +219,19 @@ int main()
 	check("2->3 exists (one-way)", city.hasEdge(2, 3));
 	check("3->2 does not exist", !city.hasEdge(3, 2));
 
+	// Checks for FR2(Vehicle Spawn) from Table 1 in the Senior Thesis
+	check("free-flow 1->2 = 45 s", std::lround(city.streets[city.findStreet(1, 2)].freeFlowSeconds()) == 45);
+	check("free-flow 2->3 = 72 s", std::lround(city.streets[city.findStreet(2, 3)].freeFlowSeconds()) == 72);
+	check("free-flow 3->6 = 60 s", std::lround(city.streets[city.findStreet(3, 6)].freeFlowSeconds()) == 60);
+	check("free-flow 6->9 = 36 s", std::lround(city.streets[city.findStreet(6, 9)].freeFlowSeconds()) == 36);
+	check("free-flow 5->6 = 120 s", std::lround(city.streets[city.findStreet(5, 6)].freeFlowSeconds()) == 120);
+
 	
 	// A negative test - 1->2->3 must NOT count as strongly connected
 	Network chain(3);
 	chain.addOneWay(1, 2, 500, 50);
 	chain.addOneWay(2, 3, 500, 50);
 	check("one-way chain is not strongly connected", !chain.isStronglyConnected());
-
-	return failures;	// If it's a 0 then all checks have passed
 
 	// Tests for FR2 (Vehicle Spawn). TO DO: FINISH THE TEST TMRW.
 	double total = 0;
@@ -254,5 +265,7 @@ int main()
 
 	check("Destination is never the spawn node", neverSelf);
 	check("The other 11 nodes are picked about equally", evenlySpread);
+
+	return failures;	// If it's a 0 then all checks have passed
 }
 	
