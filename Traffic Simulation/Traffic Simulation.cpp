@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <random>
+#include <algorithm>
 
 // This is for the size of the streets once the program runs and 
 const int link_len = 24;   // Length of a horizontal street using characters.
@@ -150,6 +151,75 @@ struct Network
 		}
 	}
 };
+
+
+// Route planning FR3
+struct Route
+{
+	std::vector<int> streetIdx;
+		double cost_s = 0;	// Overall free flow time of the route set in seconds.
+};
+
+
+Route findRoute(const Network& net, int origin, int destination)
+{
+	std::vector<double> cost(net.nodeCount + 1, 1e18);        // Cheapest known cost in order to reach each node.
+	std::vector<int> previousStreet(net.nodeCount + 1, -1);   // The street that is used to reacch each node.
+	std::vector<bool> done(net.nodeCount + 1, false);         // The finalized node.
+	cost[origin] = 0;
+
+	while (true)
+	{
+		int u = -1;
+		double lowestCost = 1e18;
+		for (int n = 1; n <= net.nodeCount; n++)
+		{
+			if (!done[n] && cost[n] < lowestCost)
+			{
+				lowestCost = cost[n];
+				u = n;
+			}
+		}
+
+
+		if (u == -1) break;
+		done[u] = true;
+		if (u == destination) break;
+
+		for (int idx : net.outgoing[u])
+		{
+			int next = net.streets[idx].to;
+			double newCost = cost[u] + net.streets[idx].freeFlowSeconds();
+
+			if (newCost < cost[next])
+			{
+				cost[next] = newCost;
+				previousStreet[next] = idx;
+			}
+		}
+	}
+
+		Route r;
+
+		if (cost[destination] >= 1e18)
+		{
+			return r;		// Desintation never reached; empty route
+		}
+
+		int node = destination;
+
+		while (node != origin)
+		{
+			int street = previousStreet[node];
+			r.streetIdx.push_back(street);
+			node = net.streets[street].from;
+		}
+
+		std::reverse(r.streetIdx.begin(), r.streetIdx.end());
+		r.cost_s = cost[destination];
+		return r;
+}
+
 
 const double tick_s = 0.1;     // One tick is equal to 0.1 seconds
 std::mt19937 rng(42);          // Random generator; FOR NOW MIGHT BE CHANGED LATERRRRRRRRRRRRRRRRRRRRRRR a fixed seed gives the same results every run, which helps benchmarking
