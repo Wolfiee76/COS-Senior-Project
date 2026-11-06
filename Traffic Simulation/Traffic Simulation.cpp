@@ -15,8 +15,7 @@ struct Street // Only one directed edge of the graph
 	int from, to;		// The numbers of the intersections.
 	double length_m;	// 500m or 1km depending which road
 	double limit_kmh;	// The speed limit of the streets
-
-	/* FOR ME TO DO: add a function for the free flow, and speed from Table 1.*/
+	double freeFlowSeconds() const { return length_m / (limit_kmh / 3.6); }
 };
 
 // This is for the street directions, depending whether it goes LEFR or RIGHT.
@@ -234,5 +233,26 @@ int main()
 		if (t < shortest) shortest = t;
 	}
 
+	double meanSeconds = total / 100000 * tick_s;
+	check("mean gap is about 6 s at 10 cars/min", meanSeconds > 5.8 && meanSeconds < 6.2);
+	check("a gap is never shorter than 1 tick", shortest >= 1);
+
+	bool neverSelf = true;
+	std::vector<int> picked(13, 0);
+	for (int i = 0; i < 110000; ++i)
+	{
+		int d = randomDestination(5, city.nodeCount);
+		if (d == 5 || d < 1 || d > 12) neverSelf = false;
+		else ++picked[d];
+	}
+
+	bool evenlySpread = true;
+	for (int n = 1; n <= 12; ++n)
+	{
+		if (n != 5 && (picked[n] < 9500 || picked[n] > 10500)) evenlySpread = false;
+	}
+
+	check("Destination is never the spawn node", neverSelf);
+	check("The other 11 nodes are picked about equally", evenlySpread);
 }
 	
