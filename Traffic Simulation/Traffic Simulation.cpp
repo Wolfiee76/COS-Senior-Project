@@ -134,13 +134,13 @@ struct Network
 
 			if (r < rows - 1)	// Vertical streets
 			{
-				for (int line = 0; line < link_rows; ++line)
+				for (int line = 0; line < link_rows; ++line)	
 				{
-					for (int c = 0; c < cols; ++c)
+					for (int c = 0; c < cols; ++c)	// Goes through the columns left to right
 					{
-						int n = r * cols + c + 1;
-						bool down = hasEdge(n, n + cols);       
-						bool up = hasEdge(n + cols, n);       
+						int n = r * cols + c + 1;	// Number of the intersection in this column of the current row
+						bool down = hasEdge(n, n + cols);      // If there is a street going down to the intersection below
+						bool up = hasEdge(n + cols, n);		// If there is a street coming up from the intersection below
 						char d = !down ? ' ' : (line == link_rows - 1 ? 'v' : road_char);   
 						char u = !up ? ' ' : (line == 0 ? '^' : road_char);               
 						std::printf(" %c%c ", d, u);            
@@ -171,30 +171,30 @@ Route findRoute(const Network& net, int origin, int destination)
 
 	while (true)
 	{
-		int u = -1;
-		double lowestCost = 1e18;
-		for (int n = 1; n <= net.nodeCount; n++)
+		int u = -1;		// The node that was chosen this round. Its negatvie beccause none are found yet
+		double lowestCost = 1e18;		// Lowest cost found so far
+		for (int n = 1; n <= net.nodeCount; n++)	// Looks at every interseccton
 		{
 			if (!done[n] && cost[n] < lowestCost)
 			{
 				lowestCost = cost[n];
-				u = n;
+				u = n;	// New best ccandidate
 			}
 		}
 
 
-		if (u == -1) break;
-		done[u] = true;
-		if (u == destination) break;
+		if (u == -1) break;		// Nothing reachable is left, meaning the search is finished
+		done[u] = true;			// The cost is final and there's no cheaper way to exists in order to reacch it
+		if (u == destination) break;	// The destination has the cheapest cost, meaning we can stop early
 
-		for (int idx : net.outgoing[u])
+		for (int idx : net.outgoing[u])		// Looks at every street that is leaving u
 		{
 			int next = net.streets[idx].to;
 			double newCost = cost[u] + net.streets[idx].freeFlowSeconds();
 
-			if (newCost < cost[next])
+			if (newCost < cost[next])	// We might have new cheaper cost
 			{
-				cost[next] = newCost;
+				cost[next] = newCost;		// Remember the new ccost
 				previousStreet[next] = idx;
 			}
 		}
@@ -254,7 +254,47 @@ struct SpawnNode
 {
 	int node;		// The intersections - 1, 5, 6, or 12
 	int nextSpawnTick;		// This is for when the next car is due
+	int spawned = 0;	// How many cars got created by the node
 };
+
+
+const double car_length = 4.5;	// The car length in meters
+const double min_gap = 2.0;	// The safe gap between 2 cars
+
+struct Vehicle
+{
+	int id = 0;
+	int spawnTick = 0;
+	int destination = 0;
+	Route route;	// The streets that the car needs to drive.
+	int routeStep = 0;	// The street that the car is on. 0 for the first one.
+	int street = -1;
+	double x = 0;            // The position of the car along that street in meters (0 = the start of the street)
+	double v = 0;            // The speed set in meters per second m/s
+	double v0 = 0;           // The Desired speed in m/s; the street speed limiit of the current street
+	bool active = true;
+};
+
+struct World
+{
+	std::vector<Vehicle> cars;
+	std::vector<SpawnNode> spawners;
+	double ratePerMinute = 10.0;	// The spawn rate will be the same for all spawn nodes
+	int nextId = 1;
+	int missedSpawns = 0;	// If spawns are missed they will be counted
+};
+
+// This creates the fixed 4 spawned nodes, each has its own first random spawn time.
+World makeWorld(double ratePerMinute)
+{
+	World w;
+	w.ratePerMinute = ratePerMinute;
+	for (int node : {1, 5, 6, 12})
+		w.spawners.push_back({ node, randomIntervalTicks(ratePerMinute), 0 });
+	return w;
+}
+
+
 
  // This is for the FR 1 checker
 int failures = 0;
