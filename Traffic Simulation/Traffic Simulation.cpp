@@ -294,9 +294,20 @@ World makeWorld(double ratePerMinute)
 	return w;
 }
 
+// TO DO TOMORROWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW OR MONDAT
+bool streetHasRoom(const std::vector<Vehicle>& cars, int streetIdx)
+{
+	return false;
+}
+
+// ALSO FOR TODO TMRWWWWWWW OR MONDAY
+void spawnStep(const Network& net, World& world, int tick)
+{
+
+}
 
 
- // This is for the FR 1 checker
+ // This is the checker that sees if all functional requirements pass or fail
 int failures = 0;
 void check(const char* name, bool ok)
 {
@@ -304,7 +315,7 @@ void check(const char* name, bool ok)
 	if (!ok) ++failures;
 }
 
-
+// SOME MOVINGS AND REORGANIZATION NEEDS TO HAPPEN HERE BEFORE THE FULL PRJCT IS SUBMITTED.
 int main()
 {
 	Network city(12);
@@ -352,7 +363,7 @@ int main()
 	chain.addOneWay(2, 3, 500, 50);
 	check("one-way chain is not strongly connected", !chain.isStronglyConnected());
 
-	// Tests for FR2 (Vehicle Spawn). TO DO: FINISH THE TEST TMRW.
+	// Tests for FR2 (Vehicle Spawn).
 	double total = 0;
 	int shortest = 1000000;
 
@@ -405,6 +416,20 @@ int main()
 				if (city.streets[r.streetIdx[i]].from != city.streets[r.streetIdx[i - 1]].to) allValid = false;
 		}
 	check("all 132 routes are valid chains of real streets", allValid);
+
+
+	// Additional FR2 (Vehicle spawn) tests. Room check
+	std::vector<Vehicle> testCars;
+	check("an empty street has room", streetHasRoom(testCars, 0));
+	Vehicle blocker;
+	blocker.street = 0;
+	blocker.active = true;
+	blocker.x = 5.0;
+	check("a car 5 m from the start blocks the spawn", !streetHasRoom(testCars, 0));
+	testCars[0].x = 6.5;
+	check("a car exactly 6.5 m away leaves room", streetHasRoom(testCars, 0));
+	testCars[0].x = 1.0;
+	check("a car on another street does not block", streetHasRoom(testCars, 1));
 
 	return failures;	// If it's a 0 then all checks have passed
 }
