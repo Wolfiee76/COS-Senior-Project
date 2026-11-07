@@ -297,13 +297,13 @@ World makeWorld(double ratePerMinute)
 // TO DO TOMORROWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW OR MONDAT
 bool streetHasRoom(const std::vector<Vehicle>& cars, int streetIdx)
 {
-	return false;
+	return false; fhfghgf
 }
 
 // ALSO FOR TODO TMRWWWWWWW OR MONDAY
 void spawnStep(const Network& net, World& world, int tick)
 {
-
+	fghfghfg
 }
 
 
@@ -311,7 +311,7 @@ void spawnStep(const Network& net, World& world, int tick)
 int failures = 0;
 void check(const char* name, bool ok)
 {
-	std::printf("[%s] %s\n", ok ? "PASS" : "FAIL", name);
+	std::printf("[%s] %s\n", ok ? "Pass" : "Fail", name);
 	if (!ok) ++failures;
 }
 
@@ -346,22 +346,22 @@ int main()
 	// FR1 (Road Network Representation) test to see if everything is met and in order.
 	check("12 intersections", city.nodeCount == 12);
 	check("26 directed edges", city.streets.size() == 26);
-	check("network is strongly connected", city.isStronglyConnected());
+	check("Network is strongly connected", city.isStronglyConnected());
 	check("2->3 exists (one-way)", city.hasEdge(2, 3));
 	check("3->2 does not exist", !city.hasEdge(3, 2));
 
 	// Checks for FR2(Vehicle Spawn) from Table 1 in the Senior Thesis
-	check("free-flow 1->2 = 45 s", std::lround(city.streets[city.findStreet(1, 2)].freeFlowSeconds()) == 45);
-	check("free-flow 2->3 = 72 s", std::lround(city.streets[city.findStreet(2, 3)].freeFlowSeconds()) == 72);
-	check("free-flow 3->6 = 60 s", std::lround(city.streets[city.findStreet(3, 6)].freeFlowSeconds()) == 60);
-	check("free-flow 6->9 = 36 s", std::lround(city.streets[city.findStreet(6, 9)].freeFlowSeconds()) == 36);
-	check("free-flow 5->6 = 120 s", std::lround(city.streets[city.findStreet(5, 6)].freeFlowSeconds()) == 120);
+	check("Free-flow 1->2 = 45 s", std::lround(city.streets[city.findStreet(1, 2)].freeFlowSeconds()) == 45);
+	check("Free-flow 2->3 = 72 s", std::lround(city.streets[city.findStreet(2, 3)].freeFlowSeconds()) == 72);
+	check("Free-flow 3->6 = 60 s", std::lround(city.streets[city.findStreet(3, 6)].freeFlowSeconds()) == 60);
+	check("Free-flow 6->9 = 36 s", std::lround(city.streets[city.findStreet(6, 9)].freeFlowSeconds()) == 36);
+	check("Free-flow 5->6 = 120 s", std::lround(city.streets[city.findStreet(5, 6)].freeFlowSeconds()) == 120);
 	
 	// A negative test - 1->2->3 must NOT count as strongly connected
 	Network chain(3);
 	chain.addOneWay(1, 2, 500, 50);
 	chain.addOneWay(2, 3, 500, 50);
-	check("one-way chain is not strongly connected", !chain.isStronglyConnected());
+	check("One-way chain is not strongly connected", !chain.isStronglyConnected());
 
 	// Tests for FR2 (Vehicle Spawn).
 	double total = 0;
@@ -375,8 +375,8 @@ int main()
 	}
 
 	double meanSeconds = total / 100000 * tick_s;
-	check("mean gap is about 6 s at 10 cars/min", meanSeconds > 5.8 && meanSeconds < 6.2);
-	check("a gap is never shorter than 1 tick", shortest >= 1);
+	check("Mean gap is about 6 s at 10 cars/min", meanSeconds > 5.8 && meanSeconds < 6.2);
+	check("A gap is never shorter than 1 tick", shortest >= 1);
 
 	bool neverSelf = true;
 	std::vector<int> picked(13, 0);
@@ -397,39 +397,75 @@ int main()
 	check("The other 11 nodes are picked about equally", evenlySpread);
 
 	// Checks for FR3(Route Planning) from Table 1
-	check("route 1->12", routeIs(city, 1, 12, { 1, 2, 5, 8, 11, 12 }, 240));
-	check("route 12->1", routeIs(city, 12, 1, { 12, 11, 10, 7, 4, 1 }, 225));
-	check("route 1->3", routeIs(city, 1, 3, { 1, 2, 3 }, 117));
-	check("route 3->1 (one-way streets force the long way)", routeIs(city, 3, 1, { 3, 6, 5, 2, 1 }, 270));
-	check("route 10->3", routeIs(city, 10, 3, { 10, 7, 4, 1, 2, 3 }, 225));
+	check("Route 1->12", routeIs(city, 1, 12, { 1, 2, 5, 8, 11, 12 }, 240));
+	check("Route 12->1", routeIs(city, 12, 1, { 12, 11, 10, 7, 4, 1 }, 225));
+	check("Route 1->3", routeIs(city, 1, 3, { 1, 2, 3 }, 117));
+	check("Route 3->1 (one-way streets force the long way)", routeIs(city, 3, 1, { 3, 6, 5, 2, 1 }, 270));
+	check("Route 10->3", routeIs(city, 10, 3, { 10, 7, 4, 1, 2, 3 }, 225));
 
-	bool allValid = true;
+	bool allValid = true;	// This is always true unless a route is broken
 	for (int from = 1; from <= 12; ++from)
 		for (int to = 1; to <= 12; ++to)
 		{
-			if (from == to) continue;
+			if (from == to) continue;		//// A car never goes from an intersection to itself
 			Route r = findRoute(city, from, to);
-			if (r.streetIdx.empty()) { allValid = false; continue; }
-			if (city.streets[r.streetIdx.front()].from != from) allValid = false;
-			if (city.streets[r.streetIdx.back()].to != to) allValid = false;
+			if (r.streetIdx.empty()) { allValid = false; continue; }			// If no route then failure
+			if (city.streets[r.streetIdx.front()].from != from) allValid = false;		// The first street should start at the spawn point
+			if (city.streets[r.streetIdx.back()].to != to) allValid = false;		// Last street should end at the final destination point
 			for(size_t i =1; i < r.streetIdx.size(); i++)
 				if (city.streets[r.streetIdx[i]].from != city.streets[r.streetIdx[i - 1]].to) allValid = false;
 		}
-	check("all 132 routes are valid chains of real streets", allValid);
+	check("All 132 routes are valid chains of real streets", allValid);
 
 
 	// Additional FR2 (Vehicle spawn) tests. Room check
 	std::vector<Vehicle> testCars;
-	check("an empty street has room", streetHasRoom(testCars, 0));
-	Vehicle blocker;
+	check("An empty street has room", streetHasRoom(testCars, 0));
+	Vehicle blocker;		// CCar that is already standing on street 0
 	blocker.street = 0;
 	blocker.active = true;
-	blocker.x = 5.0;
-	check("a car 5 m from the start blocks the spawn", !streetHasRoom(testCars, 0));
-	testCars[0].x = 6.5;
-	check("a car exactly 6.5 m away leaves room", streetHasRoom(testCars, 0));
+	blocker.x = 5.0;	// Put the car on the street
+	testCars.push_back(blocker);	
+	check("A car 5 m from the start blocks the spawn", !streetHasRoom(testCars, 0));
+	testCars[0].x = 6.5;	// Move the car to the minimum distance [4.5 meters car length + 2 meters safety gap]
+	check("A car exactly 6.5 m away leaves room", streetHasRoom(testCars, 0));
 	testCars[0].x = 1.0;
-	check("a car on another street does not block", streetHasRoom(testCars, 1));
+	check("A car on another street does not block", streetHasRoom(testCars, 1));	// Mustn't blocck street 1
+
+
+	// One simulated hour, 10 cars per min per node.
+	World hour = makeWorld(10.0);
+	bool carsOk = true;	
+	for (int tick = 0; tick < 36000; ++tick)		// 36k ticks multipled by 0.1 makes 1 hour
+	{
+		spawnStep(city, hour, tick);		// The spawn nodes create cars if the time to create a car has come
+		for (const Vehicle& c : hour.cars)			// Looks at every ccar that was ccreated
+		{
+			if (c.street < 0 || c.route.streetIdx.empty()) { carsOk = false; continue; }
+			int origin = city.streets[c.street].from;
+			bool isSpawnNode = origin == 1 || origin == 5 || origin == 6 || origin == 12;
+			if (!isSpawnNode || c.destination == origin || c.v != 0 || c.x != 0		// Must start at a spawn node, with a different destination
+				|| c.street != c.route.streetIdx.front()
+				|| city.streets[c.route.streetIdx.back()].to != c.destination) carsOk = false;	// Route should end at the final destinaation
+		}
+		hour.cars.clear();     // Pretend that the cars drive away right away
+
+	}
+	
+	bool countsOk = true;
+	for (const SpawnNode& s : hour.spawners)
+		if (s.spawned < 500 || s.spawned > 700) countsOk = false;	// 10 cars per minute times 60 minutes makes 600
+
+	check("Each spawn node creates about 600 cars in one hour at 10 cars/min", countsOk);
+	check("Each spawn node creates about 600 cars in one hour at 10 cars/min", carsOk);
+	check("Each spawn node creates about 600 cars in one hour at 10 cars/min", hour.missedSpawns == 0);
+
+	// This is is for when cars never leave. The streets will fill up and the ccar spawns must be ccounted as skipped
+	World jam = makeWorld(60.0);
+	for (int tick = 0; tick < 600; ++tick) spawnStep(city, jam, tick);	// For 1 min the cars stay where they spaned
+	check("A full street makes spawns get skipped and counted", jam.missedSpawns > 0);
+	check("At most one waiting car per first street", jam.cars.size() <= 8);
+
 
 	return failures;	// If it's a 0 then all checks have passed
 }
