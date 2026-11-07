@@ -5,6 +5,7 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <cmath>
 
 // This is for the size of the streets once the program runs and 
 const int link_len = 24;   // Length of a horizontal street using characters.
@@ -221,6 +222,15 @@ Route findRoute(const Network& net, int origin, int destination)
 }
 
 
+bool routeIs(const Network& net, int from, int to, const std::vector<int>& expectedNodes, long expectedSeconds)
+{
+	Route r = findRoute(net, from, to);
+	std::vector<int> nodes = { from };                        // The intersections that the route passes, starting at the origin
+	for (int idx : r.streetIdx) nodes.push_back(net.streets[idx].to);   // Each street adds the intersection which it leads to
+	return nodes == expectedNodes && std::lround(r.cost_s) == expectedSeconds;
+}
+
+
 const double tick_s = 0.1;     // One tick is equal to 0.1 seconds
 std::mt19937 rng(42);          // Random generator; FOR NOW MIGHT BE CHANGED LATERRRRRRRRRRRRRRRRRRRRRRR a fixed seed gives the same results every run, which helps benchmarking
 
@@ -295,7 +305,6 @@ int main()
 	check("free-flow 3->6 = 60 s", std::lround(city.streets[city.findStreet(3, 6)].freeFlowSeconds()) == 60);
 	check("free-flow 6->9 = 36 s", std::lround(city.streets[city.findStreet(6, 9)].freeFlowSeconds()) == 36);
 	check("free-flow 5->6 = 120 s", std::lround(city.streets[city.findStreet(5, 6)].freeFlowSeconds()) == 120);
-
 	
 	// A negative test - 1->2->3 must NOT count as strongly connected
 	Network chain(3);
@@ -335,6 +344,27 @@ int main()
 
 	check("Destination is never the spawn node", neverSelf);
 	check("The other 11 nodes are picked about equally", evenlySpread);
+
+	// Checks for FR3(Route Planning) from Table 1
+	check("route 1->12", routeIs(city, 1, 12, { 1, 2, 5, 8, 11, 12 }, 240));
+	check("route 12->1", routeIs(city, 12, 1, { 12, 11, 10, 7, 4, 1 }, 225));
+	check("route 1->3", routeIs(city, 1, 3, { 1, 2, 3 }, 117));
+	check("route 3->1 (one-way streets force the long way)", routeIs(city, 3, 1, { 3, 6, 5, 2, 1 }, 270));
+	check("route 10->3", routeIs(city, 10, 3, { 10, 7, 4, 1, 2, 3 }, 225));
+
+	bool allValid = true;
+	for (int from = 1; from <= 12; ++from)
+		for (int to = 1; to <= 12; ++to)
+		{
+			if (from == to) continue;
+			Route r = findRoute(city, from, to);
+			if (r.streetIdx.empty()) { allValid = false; continue; }
+			if (city.streets[r.streetIdx.front()].from != from) allValid = false;
+			if (city.streets[r.streetIdx.back()].to != to) allValid = false;
+			for(size_t i =1; i < r.streetIdx.size(); i++)
+				if (city.streets[r.streetIdx[i]].from != city.streets[r.streetIdx[i - 1]].to) allValid = false;
+		}
+	check("all 132 routes are valid chains of real streets", allValid);
 
 	return failures;	// If it's a 0 then all checks have passed
 }
