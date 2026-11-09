@@ -294,16 +294,62 @@ World makeWorld(double ratePerMinute)
 	return w;
 }
 
-// TO DO TOMORROWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW OR MONDAT
+// Is there room at the start of the street for a new car?
 bool streetHasRoom(const std::vector<Vehicle>& cars, int streetIdx)
 {
-	return false;  fghfghfghfh
+	for (const Vehicle& c : cars)
+	{
+		if (!c.active || c.street != streetIdx) continue;		// Ignmores ccars that left or on another street
+		
+
+		if (c.x < car_length + min_gap)		// The car is ccloser than the 6.5m gap
+			return false;	// There is no free space / room for a new car.
+	}
+	
+	
+	return true;	// No cars were too close to eacch other, means there is room
 }
 
-// ALSO FOR TODO TMRWWWWWWW OR MONDAY
+
 void spawnStep(const Network& net, World& world, int tick)
 {
-	fghfhhf
+	for (SpawnNode& s : world.spawners)
+	{
+		if (tick < s.nextSpawnTick) continue;    // The turn for this node hasn't come yet
+
+		int dest = randomDestination(s.node, net.nodeCount);
+		Route route = findRoute(net, s.node, dest);
+
+		// Check whether the route exists and whether the first street has room.
+		if (!route.streetIdx.empty() &&
+			streetHasRoom(world.cars, route.streetIdx.front()))
+		{
+			Vehicle v;	// Creates the car
+
+			
+			v.id = world.nextId++;	// The unique ID
+			v.spawnTick = tick;	// To note when the car was created
+			v.destination = dest;
+			v.route = route;
+			v.routeStep = 0;		// Starts on the first street of its route (Spawn Point)
+			v.street = route.streetIdx.front();
+			v.x = 0;	// This is at the start of the street
+			v.v = 0;	// Ccar standing still
+			v.v0 = net.streets[v.street].limit_kmh / 3.6;
+			v.active = true;
+
+			world.cars.push_back(v);
+			++s.spawned;
+		}
+
+		else
+		{
+			++world.missedSpawns;		// There is no room for the car, so spawn is skippepd.
+		}
+
+		// Draws the time of the next spawn.
+		s.nextSpawnTick = tick + randomIntervalTicks(world.ratePerMinute);
+	}
 }
 
 
@@ -314,6 +360,7 @@ void check(const char* name, bool ok)
 	std::printf("[%s] %s\n", ok ? "Pass" : "Fail", name);
 	if (!ok) ++failures;
 }
+
 
 //----------------------------------------------------------------------------
 
@@ -428,6 +475,7 @@ int main()
 
 	testCars[0].x = 1.0;
 	check("A car on another street does not block", streetHasRoom(testCars, 1));    // Mustn't block street 1
+
 
 	//----------------------------------------------------------------------------
 
