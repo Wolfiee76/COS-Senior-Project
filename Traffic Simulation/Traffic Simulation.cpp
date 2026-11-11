@@ -509,6 +509,45 @@ void moveStep(const Network& net, World& world)
 }
 
 
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+
+// FR5 - Time Steps
+
+struct RunResult
+{
+	int ticksRun = 0;
+	double simulatedSeconds = 0;   // ticksRun times 0.1
+	int spawned = 0;               // Cars created during the run, for all spawn nodes together
+	int arrived = 0;               // Cars that have reached their final destination
+	int missedSpawns = 0;
+	int carsOnRoad = 0;            // Cars that are still driving when the run ended
+};
+
+
+RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int totalTicks, bool verbose)
+{
+	RunResult r;		// The results of the current run are filled at the end of the run
+	rng.seed(seed);		// The same seed gives the same random numbers
+
+	World world = makeWorld(ratePerMinute);
+
+	for (int tick = 0; tick < totalTicks; ++tick)
+	{
+		spawnStep(net, world, tick);		// The spawn nodes create the cars which are due
+		moveStep(net, world);		// Accelerations, positions and speeds
+
+		if (verbose && tick % 600 == 0)		// Runs once every 600 ticks or 60 simulated seconds
+		{
+			// TO DOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: Finish the rest of FR5 tomorrow and test
+		}
+	}
+
+	return r;
+}
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
  // This is the checker that sees if all functional requirements pass or fail
 int failures = 0;
@@ -518,7 +557,7 @@ void check(const char* name, bool ok)
 	if (!ok) ++failures;
 }
 
-
+//----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 
 // The Main Function
@@ -552,6 +591,7 @@ int main()
 	std::printf("\n");
 
 	//----------------------------------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	// FR1 – Road Representation
 
@@ -568,6 +608,7 @@ int main()
 	chain.addOneWay(2, 3, 500, 50);
 	check("One-way chain is not strongly connected", !chain.isStronglyConnected());
 
+	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
 	// FR2 – Vehicle Spawn
@@ -633,7 +674,7 @@ int main()
 	testCars[0].x = 1.0;
 	check("A car on another street does not block", streetHasRoom(testCars, 1));    // Mustn't block street 1
 
-
+	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
 	
@@ -685,7 +726,7 @@ int main()
 	check("A full street makes spawns get skipped and counted", jam.missedSpawns > 0);
 	check("At most one waiting car per first street", jam.cars.size() <= 8);
 
-
+	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 	
 	
@@ -719,6 +760,7 @@ int main()
 
 	check("All 132 routes are valid chains of real streets", allValid);
 
+	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
 
@@ -783,6 +825,23 @@ int main()
 	check("A fast car behind a slow car never gets closer than the minimum gap", smallestGap > min_gap);
 	check("The fast car ends up at the speed of the slow car", std::fabs(w.cars[1].v - w.cars[0].v) < 0.3);
 	check("The gap between them ends up safe and stable", finalGap > 5 && finalGap < 40);
+
+	// A single car drives its whole route and then disappears
+	World trip;
+	Route r = findRoute(city, 1, 12);
+	Vehicle lone;
+	lone.id = 1;
+	lone.route = r;
+	lone.street = r.streetIdx.front();
+	lone.v0 = city.streets[lone.street].limit_kmh / 3.6;
+	trip.cars.push_back(lone);
+	int ticks = 0;
+
+	while (!trip.cars.empty() && ticks < 20000) { moveStep(city, trip); ++ticks; }
+	double seconds = ticks * tick_s;
+
+	check("A lone car drives its whole route and disappears at its destination", trip.cars.empty() && trip.arrived == 1);
+	check("The trip takes at least the free-flow time, but less than twice as long", seconds >= r.cost_s && seconds < 2 * r.cost_s);
 
 	return failures;    // If it's 0 then all checks have passed
 }
