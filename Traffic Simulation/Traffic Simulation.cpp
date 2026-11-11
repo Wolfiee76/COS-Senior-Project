@@ -730,6 +730,59 @@ int main()
 	check("IDM: a car far behind its leader still accelerates", idm(10, 13.9, true, 1000, 10) > 0);
 	check("IDM: a gap of zero does not break the formula", std::isfinite(idm(5, 13.9, true, 0, 0)));
 
+	
+	// The leader on the next street: car at 990 m, standing car at 10 m on the next street
+	Route r13 = findRoute(city, 1, 3);
+	std::vector<Vehicle> look(2);
+	look[0].route = r13;
+	look[0].street = r13.streetIdx[0];		// look[0] is on the first street of the route
+	look[0].x = 990;	// 10 m before the end of the 1000 m street
+	look[0].v = 10;
+	look[1].street = r13.streetIdx[1];	// [1] is on the next street
+	look[1].x = 10;		// Car positioned 10 m into the next street
+	look[1].v = 0;			//  Stationary car to test if stopped cars are beign detected
+	double gap = 0, leaderSpeed = -1;
+	bool seen = findLeader(city, look, 0, gap, leaderSpeed);
+
+	check("A car sees a standing car on the next street (gap 15.5 m)", seen && std::fabs(gap - 15.5) < 1e-9 && leaderSpeed == 0);
+	look[1].active = false;
+	check("A car with nobody ahead sees no leader", !findLeader(city, look, 0, gap, leaderSpeed));
+
+	// A car 0.1 meters before the end of its street
+	World hop;
+	Vehicle c;
+	c.route = r13;
+	c.street = r13.streetIdx[0];
+	c.x = 999.9;	// 0.1 m before the end, so one tick is enough to cross it
+	c.v = 10;	// 10 m/s means the car moves about 1 m in one tick (0.1 s), so it crosses the end by about 0.9 m
+	c.v0 = 80 / 3.6;	// 80 km/h is the speed limit of the first street (1 towards 2), converted to m/s
+	hop.cars.push_back(c);
+	moveStep(city, hop);	// One tick
+
+	check("At the end of a street a car continues on the next street of its route", hop.cars.size() == 1 && hop.cars[0].street == r13.streetIdx[1] && hop.cars[0].routeStep == 1);
+	check("It keeps the leftover distance", hop.cars[0].x > 0 && hop.cars[0].x < 5);
+	check("Its desired speed becomes the speed limit of the new street", std::fabs(hop.cars[0].v0 - 50 / 3.6) < 1e-9);
+
+	// One way street test, a fast car approaches a slow one.
+	Network line(2);
+	line.addOneWay(1, 2, 1000, 50);
+	World w;
+	Vehicle slow, fast;
+	slow.id = 1; slow.route.streetIdx = { 0 }; slow.street = 0; slow.x = 100; slow.v = 30 / 3.6; slow.v0 = 30 / 3.6;
+	fast.id = 2; fast.route.streetIdx = { 0 }; fast.street = 0; fast.x = 0;   fast.v = 50 / 3.6; fast.v0 = 50 / 3.6;
+	w.cars = { slow, fast };		// cars[0] is the slow car, cars[1] is the fast car
+	double smallestGap = 1e9;
+	for (int tick = 0; tick < 800; ++tick)	// 80 seconds: long enough for the fast car to catch up and settle, and the slow car (about 770 m by then) is still on the street
+	{
+		moveStep(line, w);
+		double g = w.cars[0].x - w.cars[1].x - car_length;	// Bumper - to - bumper gap between the two cars
+		if (g < smallestGap) smallestGap = g;	// Remember the closest distance they've ever got
+	}
+	double finalGap = w.cars[0].x - w.cars[1].x - car_length;
+
+	check("A fast car behind a slow car never gets closer than the minimum gap", smallestGap > min_gap);
+	check("The fast car ends up at the speed of the slow car", std::fabs(w.cars[1].v - w.cars[0].v) < 0.3);
+	check("The gap between them ends up safe and stable", finalGap > 5 && finalGap < 40);
 
 	return failures;    // If it's 0 then all checks have passed
 }
