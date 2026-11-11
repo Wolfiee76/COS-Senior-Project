@@ -260,6 +260,10 @@ struct SpawnNode
 
 const double car_length = 4.5;	// The car length in meters
 const double min_gap = 2.0;	// The safe gap between 2 cars
+const double a_max = 1.5;        // The max acceleration (m/s^2)
+const double b_comf = 2.0;       // The comfortable braking (m/s^2)
+const double t_headway = 1.5;    // Desired time headway (s)
+const double gap_floor = 0.1;    // The smallest gap the formula uses (m). It prevents division by zero
 
 struct Vehicle
 {
@@ -282,6 +286,7 @@ struct World
 	double ratePerMinute = 10.0;	// The spawn rate will be the same for all spawn nodes
 	int nextId = 1;
 	int missedSpawns = 0;	// If spawns are missed they will be counted
+	int arrived = 0;		// How many cars have reached their destination
 };
 
 // This creates the fixed 4 spawned nodes, each has its own first random spawn time.
@@ -350,6 +355,26 @@ void spawnStep(const Network& net, World& world, int tick)
 		// Draws the time of the next spawn.
 		s.nextSpawnTick = tick + randomIntervalTicks(world.ratePerMinute);
 	}
+}
+
+	// FR4 Vehicle movement
+double idm(double v, double v0, bool hasLeader, double gap, double leaderV)
+{
+	double freeTerm = 1.0 - std::pow(v / v0, 4);
+
+	// No car ahead: accelerate towards desired speed.
+	if (!hasLeader)
+		return a_max * freeTerm;
+
+	// Prevent division by zero or an extremely small gap.
+	gap = std::max(gap, gap_floor);
+
+	double dv = v - leaderV;
+
+	double sStar = min_gap + v * t_headway
+		+ (v * dv) / (2.0 * std::sqrt(a_max * b_comf));
+
+	return a_max * (freeTerm - std::pow(sStar / gap, 2));
 }
 
 
