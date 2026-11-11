@@ -371,11 +371,143 @@ double idm(double v, double v0, bool hasLeader, double gap, double leaderV)
 
 	double dv = v - leaderV;
 
-	double sStar = min_gap + v * t_headway
-		+ (v * dv) / (2.0 * std::sqrt(a_max * b_comf));
+	double sStar = min_gap + v * t_headway + (v * dv) / (2.0 * std::sqrt(a_max * b_comf));
 
 	return a_max * (freeTerm - std::pow(sStar / gap, 2));
 }
+
+
+
+bool findLeader(const Network& net, const std::vector<Vehicle>& cars,
+	int me, double& gap, double& leaderSpeed)
+{
+	const Vehicle& m = cars[me];	// Gets the car we are currently checking.
+
+	int best = -1; // Stores the index of the closest car ahead.
+
+	for (int i = 0; i < (int)cars.size(); ++i)		// Looks through all cars to find one ahead on the same street.
+	{
+		if (i == me) continue; // Skip the car itself.
+
+		const Vehicle& c = cars[i];
+
+		if (!c.active || c.street != m.street)	// Ignore cars that are inactive or on a different street.
+			continue;
+
+		if (c.x > m.x)		// Check if this car is ahead of our car.
+		{
+			if (best == -1 || c.x < cars[best].x)		// Keep the car if it is the first one found or closer than the previous one.
+				best = i;
+		}
+	}
+
+	// A leader was found on the same street.
+	if (best != -1)
+	{
+		gap = cars[best].x - m.x - car_length;		// Calculate the distance between the two cars (bumper to bumper).
+
+		leaderSpeed = cars[best].v;		// Get the speed of the car ahead.
+
+		return true; // A leader was found.
+	}
+
+	// Check if there is another street after the current one in the route.
+	// If not, there cannot be a leader on the next street.
+	if (m.routeStep + 1 >= (int)m.route.streetIdx.size())
+		return false;
+
+	int nextStreet = m.route.streetIdx[m.routeStep + 1];	// Get the ID of the next street in the car's route.
+
+	best = -1; // Reset the closest car index.
+
+	for (int i = 0; i < (int)cars.size(); ++i)	// Look for cars on the next street.
+	{
+		const Vehicle& c = cars[i];
+
+		if (!c.active || c.street != nextStreet)	// Ignore inactive cars and cars that are not on the next street.
+			continue;
+
+		if (best == -1 || c.x < cars[best].x)	// Ignore inactive cars and cars that are not on the next street.
+			best = i;
+	}
+
+	// A leader was found on the next street.
+	if (best != -1)
+	{
+		double streetLength = net.streets[m.street].length_m;		// Get the length of the street our car is currently on.
+		gap = (streetLength - m.x) + cars[best].x - car_length;		// Calculate the distance to the car on the next street.
+		leaderSpeed = cars[best].v;									// Get the speed of the car ahead.
+
+		return true; // A leader was found.
+	}
+
+	// No leader was found on either street.
+	return false;
+}
+
+
+void moveStep(const Network& net, World& world)
+{
+	std::vector<double> acc(world.cars.size(), 0.0);		// Store the acceleration of each car for this simulation step.
+
+	// First, calculate acceleration for every active car.
+	// Nobody moves during this loop, so all cars use the same initial state.
+	for (int i = 0; i < (int)world.cars.size(); ++i)
+	{
+		Vehicle& c = world.cars[i];
+
+		if (!c.active) continue;
+
+		double gap = 0.0;
+		double leaderSpeed = 0.0;
+
+		bool hasLeader = findLeader(net, world.cars, i, gap, leaderSpeed); 
+
+		// Calculate the acceleration using the IDM car-following model.
+		acc[i] = idm(c.v, c.v0, hasLeader, gap, leaderSpeed);
+	}
+
+	for (int i = 0; i < (int)world.cars.size(); ++i)
+	{
+		Vehicle& c = world.cars[i];
+
+		if (!c.active) continue;
+
+		// Update speed based on the calculated acceleration.
+		// The maximum function prevents the car from moving backwards.
+		c.v = std::max(0.0, c.v + acc[i] * tick_s);
+
+		c.x += c.v * tick_s;		// Move the car forward using its updated speed.
+		
+		double streetLength = net.streets[c.street].length_m;	// Check the length of the street the car is currently travelling on.
+
+		if (c.x >= streetLength)
+		{
+			// The car has reached the end of its current street.
+			if (c.routeStep + 1 >= (int)c.route.streetIdx.size())		// Check whether this was the last street in its route.
+			{
+				c.active = false;	// The car has completed its route and is marked as inactive.
+				++world.arrived;
+			}
+
+			else
+			{
+				// Move onto the next street in the car's route.
+				// Subtract the previous street length to preserve the remaining distance.
+				c.x -= streetLength;
+				++c.routeStep;		// Advance to the next street in the route.
+				c.street = c.route.streetIdx[c.routeStep];
+				c.v0 = net.streets[c.street].limit_kmh / 3.6;		// Set the desired speed according to the new street's speed limit.
+			}
+		}
+	}
+
+	// Remove all inactive cars (those that have completed their routes).
+	// erase-remove is used to clean up the vector in one operation.
+	world.cars.erase(std::remove_if(world.cars.begin(),world.cars.end(), [](const Vehicle& c) { return !c.active; }),
+		world.cars.end());
+}
+
 
 
  // This is the checker that sees if all functional requirements pass or fail
@@ -557,7 +689,7 @@ int main()
 	//----------------------------------------------------------------------------
 	
 	
-	// FR3 - Route Planning
+	// FR3 - Route Planning 
 
 	// Check expected routes from Table 1.
 	check("Route 1->12", routeIs(city, 1, 12, { 1, 2, 5, 8, 11, 12 }, 240));
@@ -586,6 +718,17 @@ int main()
 		}
 
 	check("All 132 routes are valid chains of real streets", allValid);
+
+	//----------------------------------------------------------------------------
+
+
+	// FR4 - Vehicle movement
+	// IDM checks
+	check("IDM: a standing car on an empty road accelerates at a_max", std::fabs(idm(0, 13.9, false, 0, 0) - a_max) < 1e-9);
+	check("IDM: a car at its desired speed on an empty road does not accelerate", std::fabs(idm(13.9, 13.9, false, 0, 0)) < 1e-9);
+	check("IDM: a car brakes when the gap ahead is small", idm(10, 13.9, true, 5, 10) < 0);
+	check("IDM: a car far behind its leader still accelerates", idm(10, 13.9, true, 1000, 10) > 0);
+	check("IDM: a gap of zero does not break the formula", std::isfinite(idm(5, 13.9, true, 0, 0)));
 
 
 	return failures;    // If it's 0 then all checks have passed
