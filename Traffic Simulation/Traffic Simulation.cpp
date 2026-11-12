@@ -539,8 +539,19 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 
 		if (verbose && tick % 600 == 0)		// Runs once every 600 ticks or 60 simulated seconds
 		{
-			// TO DOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: Finish the rest of FR5 tomorrow and test
+			std::printf("Time: %.1f s | Cars on road: %zu | Arrived: %d | Missed spawns: %d\n", tick * tick_s, world.cars.size(), world.arrived, world.missedSpawns);
 		}
+	}
+
+
+	r.ticksRun = totalTicks;		// Srote the results 
+	r.simulatedSeconds = totalTicks * tick_s;		// Converts the ticks into simulated seconds
+
+	// Adds up the number of cars that spawned at every spawn node
+	r.spawned = 0;
+	for (const SpawnNode& s : world.spawners)
+	{
+		r.spawned += s.spawned;
 	}
 
 	return r;
