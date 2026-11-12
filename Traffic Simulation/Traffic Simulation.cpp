@@ -554,6 +554,10 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 		r.spawned += s.spawned;
 	}
 
+	r.arrived = world.arrived;		// Storets the total number of cars that have reached their final destination
+	r.missedSpawns = world.missedSpawns;	// Stores the number of cars that were not able to spwn
+	r.carsOnRoad = (int)world.cars.size();		// Stores how many caras are still on the road.
+
 	return r;
 }
 
@@ -604,6 +608,7 @@ int main()
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
+	std::printf("\n FR1: Road Representaion \n");
 	// FR1 – Road Representation
 
 	// Test to see if everything is met and in order.
@@ -622,6 +627,7 @@ int main()
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
+	std::printf("\n FR2: Vehicle Spawn \n");
 	// FR2 – Vehicle Spawn
 	
 	// Free-flow travel time checks from Table 1 in the Senior Thesis.
@@ -688,7 +694,7 @@ int main()
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
-	
+	std::printf("\n FR2: Vehicle Spawn \n");
 	// FR2 – Vehicle Spawn
 
 	// One simulated hour, 10 cars per min per node.
@@ -740,7 +746,7 @@ int main()
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 	
-	
+	std::printf("\n FR3: Route Planning \n");
 	// FR3 - Route Planning 
 
 	// Check expected routes from Table 1.
@@ -774,7 +780,7 @@ int main()
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
-
+	std::printf("\n FR4: Vehicle Movement \n");
 	// FR4 - Vehicle movement
 	// IDM checks
 	check("IDM: a standing car on an empty road accelerates at a_max", std::fabs(idm(0, 13.9, false, 0, 0) - a_max) < 1e-9);
@@ -854,6 +860,18 @@ int main()
 	check("A lone car drives its whole route and disappears at its destination", trip.cars.empty() && trip.arrived == 1);
 	check("The trip takes at least the free-flow time, but less than twice as long", seconds >= r.cost_s && seconds < 2 * r.cost_s);
 
+
+	std::printf("\n FR5: Time Steps \n");
+	// FR5 - Time Steps
+
+	// Check to see if two runs are identical
+	auto same = [](const RunResult& x, const RunResult& y)
+		{
+			return x.spawned == y.spawned && x.arrived == y.arrived && x.missedSpawns == y.missedSpawns && x.carsOnRoad == y.carsOnRoad;
+		};
+
+	std::printf("\n");
+	std::printf("\n");
+	runSimulation(city, 5.0, 1, 3600, true);	
 	return failures;    // If it's 0 then all checks have passed
 }
-	
