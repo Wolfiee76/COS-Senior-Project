@@ -232,7 +232,7 @@ bool routeIs(const Network& net, int from, int to, const std::vector<int>& expec
 
 
 const double tick_s = 0.1;     // One tick is equal to 0.1 seconds
-std::mt19937 rng(42);          // Random generator; FOR NOW MIGHT BE CHANGED LATERRRRRRRRRRRRRRRRRRRRRRR a fixed seed gives the same results every run, which helps benchmarking
+std::mt19937 rng(42);          // Random generator; fixed seed gives the same results every run, which helps benchmarking
 
 // This is how many ticccks passed before the next car appears.
 int randomIntervalTicks(double ratePerMinute)
@@ -860,6 +860,8 @@ int main()
 	check("A lone car drives its whole route and disappears at its destination", trip.cars.empty() && trip.arrived == 1);
 	check("The trip takes at least the free-flow time, but less than twice as long", seconds >= r.cost_s && seconds < 2 * r.cost_s);
 
+	//----------------------------------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	std::printf("\n FR5: Time Steps \n");
 	// FR5 - Time Steps
@@ -869,6 +871,24 @@ int main()
 		{
 			return x.spawned == y.spawned && x.arrived == y.arrived && x.missedSpawns == y.missedSpawns && x.carsOnRoad == y.carsOnRoad;
 		};
+
+	RunResult shortRun = runSimulation(city, 10.0, 7, 6000, false);		// 6000 ticks are equal to 600 seconds in the simulation
+	check("Simulated time equals ticks x 0.1 s", shortRun.ticksRun == 6000 && std::fabs(shortRun.simulatedSeconds - 600.0) < 1e-9);
+
+	RunResult b1 = runSimulation(city, 10.0, 7, 12000, false);	// 20 simulated minutes
+	RunResult b2 = runSimulation(city, 10.0, 7, 12000, false);	// The same settings and seed again
+
+	check("Two runs with the same seed give identical results", same(b1, b2));
+
+	RunResult otherSeed = runSimulation(city, 10.0, 8, 12000, false);		// Another seed
+	check("A different seed gives different resutls", !same(b1, otherSeed));
+
+	check("No cars are lost: spawned = arrived + still on the road", b1.spawned == b1.arrived + b1.carsOnRoad);
+	check("Cars do arrive at their destinations", b1.arrived > 0);
+
+
+	RunResult heavy = runSimulation(city, 15.0, 7, 6000, false);	// 15 cars per minute per node
+	check("A heavy load (15 cars/min per node) causes missed spawns", heavy.missedSpawns > 0);
 
 	std::printf("\n");
 	std::printf("\n");
