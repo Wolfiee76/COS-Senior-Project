@@ -178,7 +178,12 @@ struct Network
 						bool down = hasEdge(n, n + cols);      // If there is a street going down to the intersection below
 						bool up = hasEdge(n + cols, n);		// If there is a street coming up from the intersection below
 						char d = !down ? ' ' : (line == link_rows - 1 ? 'v' : road_char);   
-						char u = !up ? ' ' : (line == 0 ? '^' : road_char);               
+						char u = !up ? ' ' : (line == 0 ? '^' : road_char);
+
+						// Show the number of cars instead of a dot
+						if (down && line == link_rows / 2 && carsOn(n, n + cols) > 0) d = countChar(carsOn(n, n + cols));
+						if (up && line == link_rows / 2 && carsOn(n + cols, n) > 0) u = countChar(carsOn(n + cols, n));
+
 						std::printf(" %c%c ", d, u);            
 						if (c < cols - 1) std::printf("%*s", link_len, "");
 					}
@@ -546,6 +551,44 @@ void moveStep(const Network& net, World& world)
 	world.cars.erase(std::remove_if(world.cars.begin(),world.cars.end(), [](const Vehicle& c) { return !c.active; }),
 		world.cars.end());
 }
+
+
+
+// Number of cars on every street
+std::vector<int> carsPerStreet(const Network& net, const World& world)
+{
+	std::vector<int> counts(net.streets.size(), 0);
+	for (const Vehicle& c : world.cars)
+		if (c.active) ++counts[c.street];
+	return counts;
+}
+
+
+// One tick of the simulation
+void simulateTick(const Network& net, World& world, int tick)
+{
+	spawnStep(net, world, tick);
+	moveStep(net, world);
+}
+
+
+
+/*Clears the console screen before drawing the next simulation frame.
+Windows uses the "cls" command, while Linux and macOS use "clear".
+The _WIN32 preprocessor check selects the appropriate command depending on the operating system the program is compiled for.
+*/
+
+void clearScreen()
+{
+#ifdef _WIN32
+	std::system("cls");
+#else
+	std::system("clear")
+#endif 
+}
+
+const int frame_every_ticks = 10;	// Draw a frame every 10 ticks = 1 simulated second
+const int frame_delay_ms = 50;	// Real-time pause between frames: bigger = slower
 
 
 //----------------------------------------------------------------------------
@@ -928,6 +971,8 @@ int main()
 
 	RunResult heavy = runSimulation(city, 15.0, 7, 6000, false);	// 15 cars per minute per node
 	check("A heavy load (15 cars/min per node) causes missed spawns", heavy.missedSpawns > 0);
+
+
 
 	std::printf("\n");
 	std::printf("\n");
