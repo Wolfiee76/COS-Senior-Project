@@ -6,6 +6,9 @@
 #include <random>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
+#include <thread>
+#include <cstdlib>
 
 // This is for the size of the streets once the program runs and 
 const int link_len = 24;   // Length of a horizontal street using characters.
@@ -30,6 +33,35 @@ std::string lane(bool exists, bool goestRight)
 	else s.front() = '<';		// Arrow to signal that the street direction is going LEFT.
 	return s;
 }
+
+
+// One lane of a horizontal street. If cars > 0, the number of cars is shown in the middle of the lane.
+std::string lane(bool exists, bool goesRight, int cars = 0)
+{
+	if (!exists) return std::string(link_len, ' ');
+	std::string s(link_len, road_char);
+
+	if (cars > 0)
+	{
+		std::string text = std::to_string(cars);	
+		s.replace((link_len - text.size()) / 2, text.size(), text);	// Replaces the dots in the middle with the number
+	}
+
+	if (goesRight) s.back() = '>';
+	else s.front() = '<';
+	return s;
+}
+
+char countChar(int n) 
+{ 
+	return n > 9 ? '+' : (char)('0' + n); 
+}
+
+
+
+
+
+
 
 struct Network
 {
@@ -152,6 +184,9 @@ struct Network
 		}
 	}
 };
+
+
+
 
 
 // Route planning FR3
