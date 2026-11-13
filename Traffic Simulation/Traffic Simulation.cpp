@@ -58,11 +58,6 @@ char countChar(int n)
 }
 
 
-
-
-
-
-
 struct Network
 {
 	int nodeCount;
@@ -137,8 +132,17 @@ struct Network
 
 
 	// This here will draw/ display the road network on the console once the program starts to run
-	void printMap(int cols = 3) const
+	void printMap(const std::vector<int>& carCounts = std::vector<int>(), int cols = 3) const
 	{
+
+		// Cars on the street. | 0 if there are no cars on the street
+		auto carsOn = [&](int a, int b)
+			{
+				int idx = findStreet(a, b);
+				return(idx == -1 || carCounts.empty()) ? 0 : carCounts[idx];
+			};
+
+
 		int rows = nodeCount / cols;
 		for (int r = 0; r < rows; ++r)
 		{
@@ -148,7 +152,7 @@ struct Network
 				int n = r * cols + c + 1;
 				std::printf("[%2d]", n);
 				if (c < cols - 1)
-					std::printf("%s", lane(hasEdge(n, n + 1), true).c_str());
+					std::printf("%s", lane(hasEdge(n, n + 1), true, carsOn(n, n + 1)).c_str());
 			}
 
 			std::printf("\n");
@@ -159,7 +163,7 @@ struct Network
 				int n = r * cols + c + 1;
 				std::printf("    ");
 				if (c < cols - 1)
-					std::printf("%s", lane(hasEdge(n + 1, n), false).c_str());
+					std::printf("%s", lane(hasEdge(n + 1, n), false, carsOn(n + 1, n)).c_str());
 			}
 
 			std::printf("\n");
