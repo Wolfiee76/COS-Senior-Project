@@ -184,7 +184,7 @@ struct Network
 						if (down && line == link_rows / 2 && carsOn(n, n + cols) > 0) d = countChar(carsOn(n, n + cols));
 						if (up && line == link_rows / 2 && carsOn(n + cols, n) > 0) u = countChar(carsOn(n + cols, n));
 
-						std::printf(" %c%c ", d, u);            
+						std::printf(" %c %c ", d, u);	// Small change here, because down lane and up lane the counts looked like one number
 						if (c < cols - 1) std::printf("%*s", link_len, "");
 					}
 					std::printf("\n");
@@ -554,6 +554,13 @@ void moveStep(const Network& net, World& world)
 
 
 
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+
+// FR5 - Time Steps
+
+
+
 // Number of cars on every street
 std::vector<int> carsPerStreet(const Network& net, const World& world)
 {
@@ -591,10 +598,25 @@ const int frame_every_ticks = 10;	// Draw a frame every 10 ticks = 1 simulated s
 const int frame_delay_ms = 50;	// Real-time pause between frames: bigger = slower
 
 
-//----------------------------------------------------------------------------
-//----------------------------------------------------------------------------
+// Runs a simulation and draws the map with the number of cars on every street
+void watchSimulation(const Network& net, double ratePerMinute, int seed, int totalTicks)
+{
+	rng.seed(seed);
+	World world = makeWorld(ratePerMinute);
 
-// FR5 - Time Steps
+	for (int tick = 0; tick < totalTicks; ++tick)
+	{
+		simulateTick(net, world, tick);
+		if (tick % frame_every_ticks != 0) continue;
+
+		clearScreen();
+		net.printMap(carsPerStreet(net, world));
+		std::printf("\nTime: %.0f s | Cars on road: %zu | Arrived: %d | Missed spawns: %d\n",
+			tick * tick_s, world.cars.size(), world.arrived, world.missedSpawns);
+		std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
+	}
+}
+
 
 struct RunResult
 {
@@ -973,9 +995,27 @@ int main()
 	check("A heavy load (15 cars/min per node) causes missed spawns", heavy.missedSpawns > 0);
 
 
+	World sample;
+	Vehicle v1, v2, v3;
+	v1.street = 0; v2.street = 0; v3.street = 5;
+	sample.cars = { v1, v2, v3 };
+	std::vector<int> counts = carsPerStreet(city, sample);
+
+	check("Cars per street: two cars on street 0, one on street 5", counts[0] == 2 && counts[5] == 1 && counts[1] == 0);
+	check("A lane with 12 cars shows the number 12 in its middle", lane(true, true, 12).find("12") != std::string::npos);
 
 	std::printf("\n");
 	std::printf("\n");
 	runSimulation(city, 5.0, 1, 3600, true);	
+
+	const bool show_animation = true;	// Set to false for plain test runs, for example while debugging
+
+	if (show_animation)
+	{
+		std::printf("\nPress Enter to watch the simulation...");
+		std::getchar();
+		watchSimulation(city, 5.0, 1, 3600);
+	}
+
 	return failures;    // If it's 0 then all checks have passed
 }
