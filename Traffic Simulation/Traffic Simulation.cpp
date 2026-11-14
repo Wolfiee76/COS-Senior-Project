@@ -15,46 +15,35 @@ const int link_len = 24;   // Length of a horizontal street using characters.
 const int link_rows = 6;   // Length of a vertical street, uses lines as length.
 const char road_char = '.';   // What the road uses to be drawn.
 
+
 struct Street // Only one directed edge of the graph
 {
 	int from, to;		// The numbers of the intersections.
 	double length_m;	// 500m or 1km depending which road
 	double limit_kmh;	// The speed limit of the streets
 	double freeFlowSeconds() const { return length_m / (limit_kmh / 3.6); }
+
+	
 };
 
-// This is for the street directions, depending whether it goes LEFR or RIGHT.
-std::string lane(bool exists, bool goestRight)
-{
-	if (!exists) return std::string(link_len, ' ');   // No street exists in this direction.
-	std::string s(link_len, road_char);
+// Streets between neighbours in the same row are drawn horizontally, the others vertically
+bool isHorizontalStreet(const Street& s) { return std::abs(s.from - s.to) == 1; }
 
-	if(goestRight) s.back() = '>';     // Arrow to signal that the street direction is going RIGHT.
-	else s.front() = '<';		// Arrow to signal that the street direction is going LEFT.
-	return s;
-}
+/// One character for a cell of the road: 'o' = one car, a digit = several cars, '+' = 10 or more
+char carChar(int n) { return n == 1 ? 'o' : (n > 9 ? '+' : (char)('0' + n)); }
 
-
-// One lane of a horizontal street. If cars > 0, the number of cars is shown in the middle of the lane.
-std::string lane(bool exists, bool goesRight, int cars = 0)
+// One lane of a horizontal street; 'cars' holds the number of cars in each cell of the lane
+std::string lane(bool exists, bool goesRight, const std::vector<int>& cars)
 {
 	if (!exists) return std::string(link_len, ' ');
 	std::string s(link_len, road_char);
 
-	if (cars > 0)
-	{
-		std::string text = std::to_string(cars);	
-		s.replace((link_len - text.size()) / 2, text.size(), text);	// Replaces the dots in the middle with the number
-	}
-
 	if (goesRight) s.back() = '>';
 	else s.front() = '<';
-	return s;
-}
 
-char countChar(int n) 
-{ 
-	return n > 9 ? '+' : (char)('0' + n); 
+	for (size_t i = 0; i < cars.size() && i < s.size(); ++i)	// Draw the cars over the dots
+		if (cars[i] > 0) s[i] = carChar(cars[i]);
+	return s;
 }
 
 
@@ -117,11 +106,13 @@ struct Network
 		return true;
 	}
 
+
 	// A street that goes from a to be?
 	bool hasEdge(int a, int b) const
 	{
 		return findStreet(a, b) != -1;
 	}
+
 
 	int findStreet(int a, int b) const
 	{
@@ -131,60 +122,58 @@ struct Network
 	}
 
 
-	// This here will draw/ display the road network on the console once the program starts to run
-	void printMap(const std::vector<int>& carCounts = std::vector<int>(), int cols = 3) const
+	void printMap(const std::vector<std::vector<int>>& cells = std::vector<std::vector<int>>(), int cols = 3) const
 	{
-
-		// Cars on the street. | 0 if there are no cars on the street
-		auto carsOn = [&](int a, int b)
+		// The cars in every cell of the street a->b (empty if there is no street or no data)
+		auto cellsOn = [&](int a, int b) -> const std::vector<int>&
 			{
+				static const std::vector<int> none;
 				int idx = findStreet(a, b);
-				return(idx == -1 || carCounts.empty()) ? 0 : carCounts[idx];
+				return (idx == -1 || cells.empty()) ? none : cells[idx];
 			};
-
 
 		int rows = nodeCount / cols;
 		for (int r = 0; r < rows; ++r)
 		{
-			// One row of intersections. Lane going RIGHT gets drawn to the next intersection
+			// One row of intersections. The lane going RIGHT is drawn next to them
 			for (int c = 0; c < cols; ++c)
 			{
 				int n = r * cols + c + 1;
 				std::printf("[%2d]", n);
 				if (c < cols - 1)
-					std::printf("%s", lane(hasEdge(n, n + 1), true, carsOn(n, n + 1)).c_str());
+					std::printf("%s", lane(hasEdge(n, n + 1), true, cellsOn(n, n + 1)).c_str());
 			}
-
 			std::printf("\n");
 
-			// Lane going left gets drawan
+			// The lane going LEFT, one line below
 			for (int c = 0; c < cols; ++c)
 			{
 				int n = r * cols + c + 1;
 				std::printf("    ");
 				if (c < cols - 1)
-					std::printf("%s", lane(hasEdge(n + 1, n), false, carsOn(n + 1, n)).c_str());
+					std::printf("%s", lane(hasEdge(n + 1, n), false, cellsOn(n + 1, n)).c_str());
 			}
-
 			std::printf("\n");
 
 			if (r < rows - 1)	// Vertical streets
 			{
-				for (int line = 0; line < link_rows; ++line)	
+				for (int line = 0; line < link_rows; ++line)
 				{
-					for (int c = 0; c < cols; ++c)	// Goes through the columns left to right
+					for (int c = 0; c < cols; ++c)
 					{
-						int n = r * cols + c + 1;	// Number of the intersection in this column of the current row
-						bool down = hasEdge(n, n + cols);      // If there is a street going down to the intersection below
-						bool up = hasEdge(n + cols, n);		// If there is a street coming up from the intersection below
-						char d = !down ? ' ' : (line == link_rows - 1 ? 'v' : road_char);   
+						int n = r * cols + c + 1;
+						bool down = hasEdge(n, n + cols);
+						bool up = hasEdge(n + cols, n);
+						const std::vector<int>& downCells = cellsOn(n, n + cols);
+						const std::vector<int>& upCells = cellsOn(n + cols, n);
+						char d = !down ? ' ' : (line == link_rows - 1 ? 'v' : road_char);
 						char u = !up ? ' ' : (line == 0 ? '^' : road_char);
 
-						// Show the number of cars instead of a dot
-						if (down && line == link_rows / 2 && carsOn(n, n + cols) > 0) d = countChar(carsOn(n, n + cols));
-						if (up && line == link_rows / 2 && carsOn(n + cols, n) > 0) u = countChar(carsOn(n + cols, n));
+						// Draw the cars over the dots of this line
+						if (down && line < (int)downCells.size() && downCells[line] > 0) d = carChar(downCells[line]);
+						if (up && line < (int)upCells.size() && upCells[line] > 0) u = carChar(upCells[line]);
 
-						std::printf(" %c %c ", d, u);	// Small change here, because down lane and up lane the counts looked like one number
+						std::printf("%c  %c", d, u);
 						if (c < cols - 1) std::printf("%*s", link_len, "");
 					}
 					std::printf("\n");
@@ -192,6 +181,7 @@ struct Network
 			}
 		}
 	}
+	
 };
 
 
@@ -570,6 +560,27 @@ std::vector<int> carsPerStreet(const Network& net, const World& world)
 	return counts;
 }
 
+// How many cars are in each cell of every street
+std::vector<std::vector<int>> carsOnStreets(const Network& net, const World& world)
+{
+	std::vector<std::vector<int>> cells(net.streets.size());
+	for(size_t i = 0; i < net.streets.size(); ++i)	// One cell per drawn character
+		cells[i].assign(isHorizontalStreet(net.streets[i]) ? link_len : link_rows, 0);
+
+	for (const Vehicle& c : world.cars)
+	{
+		if (!c.active) continue;
+		const Street& st = net.streets[c.street];
+		int n = (int)cells[c.street].size();
+		int cell = (int)(c.x / st.length_m * n);	// How far along the street is the car
+		if (cell > n - 1) cell = n - 1;
+		if (cell < 0) cell = 0;
+		if (st.to < st.from) cell = n - 1 - cell;	// Streets going left or up are drawn the other way round
+		++cells[c.street][cell];
+	}
+
+	return cells;
+}
 
 // One tick of the simulation
 void simulateTick(const Network& net, World& world, int tick)
@@ -610,7 +621,7 @@ void watchSimulation(const Network& net, double ratePerMinute, int seed, int tot
 		if (tick % frame_every_ticks != 0) continue;
 
 		clearScreen();
-		net.printMap(carsPerStreet(net, world));
+		net.printMap(carsOnStreets(net, world));
 		std::printf("\nTime: %.0f s | Cars on road: %zu | Arrived: %d | Missed spawns: %d\n",
 			tick * tick_s, world.cars.size(), world.arrived, world.missedSpawns);
 		std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
@@ -1002,7 +1013,12 @@ int main()
 	std::vector<int> counts = carsPerStreet(city, sample);
 
 	check("Cars per street: two cars on street 0, one on street 5", counts[0] == 2 && counts[5] == 1 && counts[1] == 0);
-	check("A lane with 12 cars shows the number 12 in its middle", lane(true, true, 12).find("12") != std::string::npos);
+	
+	std::vector<int> laneCells(link_len, 0);	// An empty lane: no cars in any cell
+	laneCells[5] = 1;	// One car in cell 5
+	laneCells[8] = 3;	// Three cars in cell 8
+	std::string drawn = lane(true, true, laneCells);
+	check("A lane shows 'o' for one car and a digit for several cars", drawn[5] == 'o' && drawn[8] == '3');
 
 	std::printf("\n");
 	std::printf("\n");
