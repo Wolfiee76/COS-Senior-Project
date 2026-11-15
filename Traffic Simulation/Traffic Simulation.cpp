@@ -1020,11 +1020,26 @@ int main()
 	std::string drawn = lane(true, true, laneCells);
 	check("A lane shows 'o' for one car and a digit for several cars", drawn[5] == 'o' && drawn[8] == '3');
 
+	World sample2;
+	Vehicle a, b, c2, d, e;
+	a.street = city.findStreet(1, 2);  a.x = 10;	// right-going street
+	b.street = city.findStreet(2, 1);  b.x = 10;	// left-going street
+	c2.street = city.findStreet(2, 5); c2.x = 10;	// down street
+	d.street = city.findStreet(5, 2);  d.x = 10;	// up street
+	e.street = city.findStreet(1, 2);  e.x = 15;	// shares the first cell with 'a'
+	sample2.cars = { a, b, c2, d, e };
+	auto cells = carsOnStreets(city, sample2);
+	check("Start of a right-going street is its first cell (two cars share it)", cells[city.findStreet(1, 2)][0] == 2);
+	check("Start of a left-going street is its LAST cell", cells[city.findStreet(2, 1)][link_len - 1] == 1);
+	check("Start of a down street is its first line", cells[city.findStreet(2, 5)][0] == 1);
+	check("Start of an up street is its LAST line", cells[city.findStreet(5, 2)][link_rows - 1] == 1);
+
+
 	std::printf("\n");
 	std::printf("\n");
 	runSimulation(city, 5.0, 1, 3600, true);	
 
-	const bool show_animation = true;	// Set to false for plain test runs, for example while debugging
+	const bool show_animation = true;	// Set to false for plain test runs, aka debugging
 
 	if (show_animation)
 	{
