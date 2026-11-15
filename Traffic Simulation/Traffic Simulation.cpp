@@ -431,8 +431,7 @@ double idm(double v, double v0, bool hasLeader, double gap, double leaderV)
 
 
 
-bool findLeader(const Network& net, const std::vector<Vehicle>& cars,
-	int me, double& gap, double& leaderSpeed)
+bool findLeader(const Network& net, const std::vector<Vehicle>& cars, int me, double& gap, double& leaderSpeed, int* leaderIndex = nullptr)
 {
 	const Vehicle& m = cars[me];	// Gets the car we are currently checking.
 
@@ -460,6 +459,8 @@ bool findLeader(const Network& net, const std::vector<Vehicle>& cars,
 		gap = cars[best].x - m.x - car_length;		// Calculate the distance between the two cars (bumper to bumper).
 
 		leaderSpeed = cars[best].v;		// Get the speed of the car ahead.
+
+		if (leaderIndex) *leaderIndex = best;	// Tells the caller which car it is.
 
 		return true; // A leader was found.
 	}
@@ -491,6 +492,8 @@ bool findLeader(const Network& net, const std::vector<Vehicle>& cars,
 		gap = (streetLength - m.x) + cars[best].x - car_length;		// Calculate the distance to the car on the next street.
 		leaderSpeed = cars[best].v;									// Get the speed of the car ahead.
 
+		if (leaderIndex) *leaderIndex = best;	// Tell the caller which car it is
+
 		return true; // A leader was found.
 	}
 
@@ -503,6 +506,8 @@ void moveStep(const Network& net, World& world)
 {
 	std::vector<double> acc(world.cars.size(), 0.0);		// Store the acceleration of each car for this simulation step.
 
+	
+
 	// First, calculate acceleration for every active car.
 	// Nobody moves during this loop, so all cars use the same initial state.
 	for (int i = 0; i < (int)world.cars.size(); ++i)
@@ -514,7 +519,7 @@ void moveStep(const Network& net, World& world)
 		double gap = 0.0;
 		double leaderSpeed = 0.0;
 
-		bool hasLeader = findLeader(net, world.cars, i, gap, leaderSpeed); 
+		bool hasLeader = !c.ignoresLeader && findLeader(net, world.cars, i, gap, leaderSpeed);
 
 		// Calculate the acceleration using the IDM car-following model.
 		acc[i] = idm(c.v, c.v0, hasLeader, gap, leaderSpeed);
@@ -601,11 +606,28 @@ std::vector<std::vector<int>> carsOnStreets(const Network& net, const World& wor
 	return cells;
 }
 
+// Crashed car stops and stays stationary until the timer runs out
+void crashCar(Vehicle& c)
+{
+	if (c.crashed) return;		// Car already crashed, keeps the timer running
+	c.crashed = true;
+	c. crashTicksLeft = crash_ticks;
+	c. v = 0;
+}
+
+
+void collisionStep(const Network& net, World& world, int tick)
+{
+
+}
+
+
 // One tick of the simulation
 void simulateTick(const Network& net, World& world, int tick)
 {
 	spawnStep(net, world, tick);
 	moveStep(net, world);
+	collisionStep(net, world, tick);
 }
 
 
@@ -656,12 +678,14 @@ struct RunResult
 	int arrived = 0;               // Cars that have reached their final destination
 	int missedSpawns = 0;
 	int carsOnRoad = 0;            // Cars that are still driving when the run ended
+
 };
 
 
 RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int totalTicks, bool verbose)
 {
 	RunResult r;		// The results of the current run are filled at the end of the run
+
 	rng.seed(seed);		// The same seed gives the same random numbers
 
 	World world = makeWorld(ratePerMinute);
@@ -680,6 +704,8 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 
 	r.ticksRun = totalTicks;		// Srote the results 
 	r.simulatedSeconds = totalTicks * tick_s;		// Converts the ticks into simulated seconds
+
+	
 
 	// Adds up the number of cars that spawned at every spawn node
 	r.spawned = 0;
@@ -1052,6 +1078,10 @@ int main()
 	check("Start of a left-going street is its LAST cell", cells[city.findStreet(2, 1)][link_len - 1] == 1);
 	check("Start of a down street is its first line", cells[city.findStreet(2, 5)][0] == 1);
 	check("Start of an up street is its LAST line", cells[city.findStreet(5, 2)][link_rows - 1] == 1);
+
+
+	// Crashed cars now leave the road
+	
 
 
 	std::printf("\n");
