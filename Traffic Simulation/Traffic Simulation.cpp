@@ -9,6 +9,7 @@
 #include <chrono>
 #include <thread>
 #include <cstdlib>
+#include <set>
 
 // This is for the size of the streets once the program runs and 
 const int link_len = 24;   // Length of a horizontal street using characters.
@@ -311,7 +312,20 @@ struct Vehicle
 	double v = 0;            // The speed set in meters per second m/s
 	double v0 = 0;           // The Desired speed in m/s; the street speed limiit of the current street
 	bool active = true;
+
+	bool crashed = false;		// Becomes true after a collision: the car is stationary until it is removed
+	int crashTicksLeft = 0;		// Ticks until the car is removed
+	bool ignoresLeader = false;		// Distracted driver who ignores the car ahead
 };
+
+struct Collision
+{
+	double timeSeconds;   // when it happened
+	int carA, carB;       // the IDs of the two cars
+	int street;           // the street of the car behind
+};
+
+const int crash_ticks = 50;	// Crashed cars stay staationary for 5 seconds
 
 struct World
 {
@@ -321,6 +335,11 @@ struct World
 	int nextId = 1;
 	int missedSpawns = 0;	// If spawns are missed they will be counted
 	int arrived = 0;		// How many cars have reached their destination
+
+	std::vector<Collision> collisions;             // This is the log of all collisions 
+	std::set<std::pair<int, int>> countedPairs;    // Pairs of car IDs that were already counted
+	int removedByCrash = 0;                        // Removes the cars after collision
+
 };
 
 // This creates the fixed 4 spawned nodes, each has its own first random spawn time.
