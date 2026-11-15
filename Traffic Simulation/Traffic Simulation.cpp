@@ -531,6 +531,13 @@ void moveStep(const Network& net, World& world)
 
 		if (!c.active) continue;
 
+		// This is to ensure that a crashed car doesn't move
+		if (c.crashed)
+		{
+			c.v = 0.0;
+			continue;
+		}
+
 		// Update speed based on the calculated acceleration.
 		// The maximum function prevents the car from moving backwards.
 		c.v = std::max(0.0, c.v + acc[i] * tick_s);
@@ -618,7 +625,50 @@ void crashCar(Vehicle& c)
 
 void collisionStep(const Network& net, World& world, int tick)
 {
+	for (int i = 0; i < (int)world.cars.size(); ++i)		// Counts the crashed cars
+	{
+		Vehicle& c = world.cars[i];
 
+		if (!c.active || !c.crashed) continue;
+
+		--c.crashTicksLeft;
+
+		if (c.crashTicksLeft <= 0)
+		{
+			c.active = false;
+			++world.removedByCrash;
+		}
+	}
+
+	// Detects new collisions
+	for (int i = 0; i < (int)world.cars.size(); ++i)
+	{
+		Vehicle& c = world.cars[i];
+
+		if (!c.active || !c.crashed) continue;
+
+		double gap;
+		double leaderSpeed;
+		int lead = -1;
+
+		// Finds the leader of the current car
+		if (!findLeader(net, world.cars, i, gap, leaderSpeed, &lead)) continue;
+
+		// No collision if a positive gap exists
+		if (gap > 0) continue;
+
+		// Get the leader car
+		Vehicle& leader = world.cars[lead];
+		
+		// Builds a pair key while using small and large car ID's
+		std::pair<int, int> key(std::min(c.id, leader.id), std::max(c.id, leader.id));
+
+		// Checks whether a collision pair was already counted
+		if (world.countedPairs.count(key)) continue;
+
+		// Remember that a pair was counted
+		world.countedPairs.insert(key);
+	}
 }
 
 
@@ -704,6 +754,11 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 
 	r.ticksRun = totalTicks;		// Srote the results 
 	r.simulatedSeconds = totalTicks * tick_s;		// Converts the ticks into simulated seconds
+
+
+	dgfhfhfg
+	// r.collisions = (int)world.collisions.size(); 
+	// r.carsRemoved = world.removedByCrash;	
 
 	
 
