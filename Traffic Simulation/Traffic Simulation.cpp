@@ -327,6 +327,8 @@ struct Collision
 
 const int crash_ticks = 50;	// Crashed cars stay staationary for 5 seconds
 
+
+
 struct World
 {
 	std::vector<Vehicle> cars;
@@ -668,7 +670,19 @@ void collisionStep(const Network& net, World& world, int tick)
 
 		// Remember that a pair was counted
 		world.countedPairs.insert(key);
+
+
+		// This part here records the collision
+		world.collisions.push_back({ tick * tick_s, c.id, leader.id, c.street });
+
+
+		// Crashes both cars
+		crashCar(c);
+		crashCar(leader);
 	}
+
+		// Removes the cars that are no longer active
+	world.cars.erase(std::remove_if(world.cars.begin(), world.cars.end(),[](const Vehicle& c) { return !c.active; }), world.cars.end());
 }
 
 
@@ -728,7 +742,8 @@ struct RunResult
 	int arrived = 0;               // Cars that have reached their final destination
 	int missedSpawns = 0;
 	int carsOnRoad = 0;            // Cars that are still driving when the run ended
-
+	int collisions = 0;            // Number of collisions during the run
+	int carsRemoved = 0;           // Cars removed after a collision
 };
 
 
@@ -754,13 +769,7 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 
 	r.ticksRun = totalTicks;		// Srote the results 
 	r.simulatedSeconds = totalTicks * tick_s;		// Converts the ticks into simulated seconds
-
-
-	dgfhfhfg
-	// r.collisions = (int)world.collisions.size(); 
-	// r.carsRemoved = world.removedByCrash;	
-
-	
+		
 
 	// Adds up the number of cars that spawned at every spawn node
 	r.spawned = 0;
@@ -772,6 +781,8 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 	r.arrived = world.arrived;		// Storets the total number of cars that have reached their final destination
 	r.missedSpawns = world.missedSpawns;	// Stores the number of cars that were not able to spwn
 	r.carsOnRoad = (int)world.cars.size();		// Stores how many caras are still on the road.
+	r.collisions = (int)world.collisions.size();
+	r.carsRemoved = world.removedByCrash;
 
 	return r;
 }
@@ -1136,11 +1147,42 @@ int main()
 
 
 	// Crashed cars now leave the road
+	check("No cars are lost: spawned = arrived + still on the road + removed after crashes", b1.spawned == b1.arrived + b1.carsOnRoad + b1.carsRemoved);
+
+	//----------------------------------------------------------------------------
+	//----------------------------------------------------------------------------
+
+	std::printf("\n FR6: Collisions \n");
+
+	// FR6 - Collison detection
+	Network line2(2);
+	line2.addOneWay(1, 2, 1000, 50);
+
+
+	// Two cars that are overlapped. The car behind is 3 meters behind, making the gap -1.5
+
+	World crash;
+	Vehicle front, back;
+	front.id = 1; front.route.streetIdx = { 0 }; front.street = 0; front.x = 100; front.v0 = 50 / 3.6;
+	back.id = 2;  back.route.streetIdx = { 0 }; back.street = 0; back.x = 97;  back.v0 = 50 / 3.6;
+	crash.cars = { front, back };
 	
+	collisionStep(line2, crash, 100);	// 100 ticks are equal to 10 seconds
+	check("Overlapping cars are counted as one collision", crash.collisions.size() == 1);
+	check("The collision is logged with time, both car IDs and the street",
+		crash.collisions.size() == 1 && std::fabs(crash.collisions[0].timeSeconds - 10.0) < 1e-9
+		&& std::min(crash.collisions[0].carA, crash.collisions[0].carB) == 1
+		&& std::max(crash.collisions[0].carA, crash.collisions[0].carB) == 2
+		&& crash.collisions[0].street == 0);
+
+	collisionStep(line2, crash, 101);	// The cars are still overlapped after 1 tick 
+	check("The same pair is not counted again while the cars overlap", crash.collisions.size() == 1);
+
 
 
 	std::printf("\n");
 	std::printf("\n");
+
 	runSimulation(city, 5.0, 1, 3600, true);	
 
 	const bool show_animation = true;	// Set to false for plain test runs, aka debugging
