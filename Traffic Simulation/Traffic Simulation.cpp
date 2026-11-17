@@ -341,6 +341,9 @@ struct World
 	std::set<std::pair<int, int>> countedPairs;    // Pairs of car IDs that were already counted
 	int removedByCrash = 0;                        // Removes the cars after collision
 
+	int currentTick = 0;	// The tick that is simulated now
+	double travelTimeSum = 0;	// The sum of arrival time minus spawn time of all cars that arrived translated in seconds
+
 };
 
 // This creates the fixed 4 spawned nodes, each has its own first random spawn time.
@@ -693,6 +696,8 @@ void simulateTick(const Network& net, World& world, int tick)
 	spawnStep(net, world, tick);
 	moveStep(net, world);
 	collisionStep(net, world, tick);
+
+	world.currentTick = tick;
 }
 
 
@@ -745,6 +750,9 @@ struct RunResult
 	int carsOnRoad = 0;            // Cars that are still driving when the run ended
 	int collisions = 0;            // Number of collisions during the run
 	int carsRemoved = 0;           // Cars removed after a collision
+
+	double avgTravelTime = 0;	// Mean time from spawn to final destination translated into seconds
+	double throughputPerHour = 0;	// The completed trips per simulated hour
 };
 
 
