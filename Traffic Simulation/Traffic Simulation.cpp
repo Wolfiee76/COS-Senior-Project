@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <set>
 
+
 // This is for the size of the streets once the program runs and 
 const int link_len = 24;   // Length of a horizontal street using characters.
 const int link_rows = 6;   // Length of a vertical street, uses lines as length.
@@ -23,8 +24,6 @@ struct Street // Only one directed edge of the graph
 	double length_m;	// 500m or 1km depending which road
 	double limit_kmh;	// The speed limit of the streets
 	double freeFlowSeconds() const { return length_m / (limit_kmh / 3.6); }
-
-	
 };
 
 // Streets between neighbours in the same row are drawn horizontally, the others vertically
@@ -1179,11 +1178,38 @@ int main()
 	collisionStep(line2, crash, 101);	// The cars are still overlapped after 1 tick 
 	check("The same pair is not counted again while the cars overlap", crash.collisions.size() == 1);
 
+
+
+	// Cars are 1 meter apart: close to the 2 min gap treshold but not touching
+	World close;
+	back.x = 94.5;	// gap = 100 - 94.5 - 4.5 = 1 m
+	close.cars = { front, back };
+	collisionStep(line2, close, 1);
+	check("Cars closer than the 2 m minimum gap but not touching are not a collision", close.collisions.empty());
+	back.x = 97;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	RunResult hard = runSimulation(city, 15.0, 1, 36000, false);	// 15 cars/min per node, one simulated hour
 	std::printf("Collisions in one simulated hour at 15 cars/min: %d (removed after crashes: %d)\n", hard.collisions, hard.carsRemoved);
 
 	std::printf("DEBUG: collisions = %zu, cars = %zu, crashed flags = %d %d\n",
 		crash.collisions.size(), crash.cars.size(), (int)crash.cars[0].crashed, (int)crash.cars[1].crashed);
+
+
 
 	std::printf("\n");
 	std::printf("\n");
