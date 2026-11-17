@@ -10,6 +10,7 @@
 #include <thread>
 #include <cstdlib>
 #include <set>
+#include <filesystem>
 
 
 // This is for the size of the streets once the program runs and 
@@ -557,6 +558,8 @@ void moveStep(const Network& net, World& world)
 			{
 				c.active = false;	// The car has completed its route and is marked as inactive.
 				++world.arrived;
+
+				world.travelTimeSum += (world.currentTick - c.spawnTick) * tick_s;
 			}
 
 			else
@@ -792,8 +795,54 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 	r.collisions = (int)world.collisions.size();
 	r.carsRemoved = world.removedByCrash;
 
+	r.avgTravelTime = (world.arrived > 0)
+		? world.travelTimeSum / world.arrived : 0.0;
+
+
+	r.throughputPerHour = (r.simulatedSeconds > 0)
+		? (world.arrived / r.simulatedSeconds) * 3600.0 : 0.0;
+
+
 	return r;
 }
+
+
+// Benchmark runner. Runs every spawn rate with every seed and writes the result in a text file
+void runBenchmark(const Network& net, const std::vector<double>& rates, const std::vector<int>& seeds, int totalTicks, const char* fileName)
+{
+	std::FILE* f = std::fopen(fileName, "W");
+	if (!f) { std::printf("Could not open %s for writing\n", fileName); return; }
+
+	std::fprintf(f, "Traffic simulation benchmark: %d ticks (%.0f simulated seconds) per run\n\n", totalTicks, totalTicks * tick_s);
+	std::fprintf(f, "%-6s %-5s %8s %8s %13s %10s %11s %7s\n", "Rate", "Seed", "Spawned", "Arrived", "AvgTravel(s)", "Cars/hour", "Collisions", "Missed");
+
+
+	for (double rate : rates)
+	{
+		// Sums for the calculating mean
+		double sumSpawned = 0;
+		double sumArrived = 0;
+		double sumTravelTime = 0;
+		double sumThroughput = 0;
+		double sumCollisions = 0;
+		double sumMissed = 0;
+
+		// Loops through every seed
+		for (int seed : seeds)
+		{
+			RunResult r = runSimulation(net, rate, seed, totalTicks, false);
+
+			// Writes the results
+			std::printf(f, "%-6.1f %-5d %8d %8d %13.1f %10.1f %11d %7d\n",
+				rate, seed, r.spawned, r.arrived, r.avgTravelTime,
+				r.throughputPerHour, r.collisions, r.missedSpawns);
+				
+		
+		}
+	}
+
+}
+
 
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
