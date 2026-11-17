@@ -1175,9 +1175,9 @@ int main()
 		&& std::max(crash.collisions[0].carA, crash.collisions[0].carB) == 2
 		&& crash.collisions[0].street == 0);
 
+
 	collisionStep(line2, crash, 101);	// The cars are still overlapped after 1 tick 
 	check("The same pair is not counted again while the cars overlap", crash.collisions.size() == 1);
-
 
 
 	// Cars are 1 meter apart: close to the 2 min gap treshold but not touching
@@ -1189,14 +1189,27 @@ int main()
 	back.x = 97;
 
 
+	// The crashed cars stay still for 5 seconds. Then they are removed
+	bool stayedStill = true;
+	int tick = 101;
+
+	while (!crash.cars.empty() && tick < 400)
+	{
+		++tick;
+		moveStep(line2, crash);
+		collisionStep(line2, crash, tick);
+
+		for (const Vehicle& v : crash.cars)
+
+		if (v.v != 0 || (v.id == 1 && v.x != 100) || (v.id == 2 && v.x != 97)) stayedStill = false;
+	}
+
+	check("rashed cars stay where they are", stayedStill);
+	check("Crashed cars are removed 5 s after the crash", crash.cars.empty() && tick == 150);
+	check("Removed crashed cars are not counted as arrived", crash.arrived == 0 && crash.removedByCrash);
 
 
-
-
-
-
-
-
+	// Cars overlap across an intersection. 1 meter before the end of one street and 1 meter into the next street
 
 
 
