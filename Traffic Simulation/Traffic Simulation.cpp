@@ -1149,6 +1149,8 @@ int main()
 	// Crashed cars now leave the road
 	check("No cars are lost: spawned = arrived + still on the road + removed after crashes", b1.spawned == b1.arrived + b1.carsOnRoad + b1.carsRemoved);
 
+
+
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
@@ -1210,18 +1212,47 @@ int main()
 
 
 	// Cars overlap across an intersection. 1 meter before the end of one street and 1 meter into the next street
+	Network two(3);
+	two.addOneWay(1, 2, 1000, 50);
+	two.addTwoWay(2, 3, 1000, 50);
+	World across;
+	Vehicle behind, ahead;
+	behind.id = 1; behind.route.streetIdx = { 0, 1 }; behind.street = 0; behind.x = 999;
+	ahead.id = 2; ahead.route.streetIdx = { 1 }; ahead.street = 1; ahead.x = 1;
+	across.cars = { behind, ahead };
+
+	collisionStep(two, across, 1);
+	check("Cars overlapping across an intersection are detected", across.collisions.size() == 1);
 
 
+	// Distracted driver ignores a car ahead
+	World distracted, careful;
+	Vehicle slow2, fast2;
+	slow2.id = 1; slow2.route.streetIdx = { 0 }; slow2.street = 0; slow2.x = 100; slow2.v = 30 / 3.6; slow2.v0 = 30 / 3.6;
+	fast2.id = 2; fast2.route.streetIdx = { 0 }; fast2.street = 0; fast2.x = 0;   fast2.v = 50 / 3.6; fast2.v0 = 50 / 3.6;
+	careful.cars = { slow2, fast2 };
+	fast2.ignoresLeader = true;
+	distracted.cars = { slow2, fast2 };	// The fast car ignores the slow one
+
+	for (int t = 0; t < 800; ++t)	// 80 seconds
+	{
+		moveStep(line2, distracted);
+		collisionStep(line2, distracted, t);
+		moveStep(line2, careful);
+		collisionStep(line2, careful, t);
+	}
+
+	check("A distracted driver who ignores the car ahead causes exactly one collision", distracted.collisions.size() == 1);
+	check("The same two cars with a normal driver never collide", careful.collisions.empty());
 
 
-
+	//----------------------------------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	RunResult hard = runSimulation(city, 15.0, 1, 36000, false);	// 15 cars/min per node, one simulated hour
+
+	std::printf("\n");
 	std::printf("Collisions in one simulated hour at 15 cars/min: %d (removed after crashes: %d)\n", hard.collisions, hard.carsRemoved);
-
-	std::printf("DEBUG: collisions = %zu, cars = %zu, crashed flags = %d %d\n",
-		crash.collisions.size(), crash.cars.size(), (int)crash.cars[0].crashed, (int)crash.cars[1].crashed);
-
 
 
 	std::printf("\n");
