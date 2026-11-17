@@ -647,7 +647,7 @@ void collisionStep(const Network& net, World& world, int tick)
 	{
 		Vehicle& c = world.cars[i];
 
-		if (!c.active || !c.crashed) continue;
+		if (!c.active) continue;
 
 		double gap;
 		double leaderSpeed;
@@ -655,6 +655,8 @@ void collisionStep(const Network& net, World& world, int tick)
 
 		// Finds the leader of the current car
 		if (!findLeader(net, world.cars, i, gap, leaderSpeed, &lead)) continue;
+
+		if (lead < 0) continue;	// Safety: no leader index means nothing to compare
 
 		// No collision if a positive gap exists
 		if (gap > 0) continue;
@@ -727,8 +729,8 @@ void watchSimulation(const Network& net, double ratePerMinute, int seed, int tot
 
 		clearScreen();
 		net.printMap(carsOnStreets(net, world));
-		std::printf("\nTime: %.0f s | Cars on road: %zu | Arrived: %d | Missed spawns: %d\n",
-			tick * tick_s, world.cars.size(), world.arrived, world.missedSpawns);
+		std::printf("\nTime: %.0f s | Cars on road: %zu | Arrived: %d | Missed spawns: %d | Collisions: %zu\n",
+			tick * tick_s, world.cars.size(), world.arrived, world.missedSpawns, world.collisions.size());
 		std::this_thread::sleep_for(std::chrono::milliseconds(frame_delay_ms));
 	}
 }
@@ -757,8 +759,7 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 
 	for (int tick = 0; tick < totalTicks; ++tick)
 	{
-		spawnStep(net, world, tick);		// The spawn nodes create the cars which are due
-		moveStep(net, world);		// Accelerations, positions and speeds
+		simulateTick(net, world, tick);		// Spawning, movement and the collision check
 
 		if (verbose && tick % 600 == 0)		// Runs once every 600 ticks or 60 simulated seconds
 		{
@@ -1178,12 +1179,16 @@ int main()
 	collisionStep(line2, crash, 101);	// The cars are still overlapped after 1 tick 
 	check("The same pair is not counted again while the cars overlap", crash.collisions.size() == 1);
 
+	RunResult hard = runSimulation(city, 15.0, 1, 36000, false);	// 15 cars/min per node, one simulated hour
+	std::printf("Collisions in one simulated hour at 15 cars/min: %d (removed after crashes: %d)\n", hard.collisions, hard.carsRemoved);
 
+	std::printf("DEBUG: collisions = %zu, cars = %zu, crashed flags = %d %d\n",
+		crash.collisions.size(), crash.cars.size(), (int)crash.cars[0].crashed, (int)crash.cars[1].crashed);
 
 	std::printf("\n");
 	std::printf("\n");
 
-	runSimulation(city, 5.0, 1, 3600, true);	
+	runSimulation(city, 15.0, 1, 3600, true);	
 
 	const bool show_animation = true;	// Set to false for plain test runs, aka debugging
 
@@ -1191,7 +1196,7 @@ int main()
 	{
 		std::printf("\nPress Enter to watch the simulation...");
 		std::getchar();
-		watchSimulation(city, 5.0, 1, 3600);
+		watchSimulation(city, 15.0, 1, 3600);
 	}
 
 	return failures;    // If it's 0 then all checks have passed
