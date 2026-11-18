@@ -715,7 +715,7 @@ void clearScreen()
 #ifdef _WIN32
 	std::system("cls");
 #else
-	std::system("clear")
+	std::system("clear");
 #endif 
 }
 
@@ -810,16 +810,16 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 // Benchmark runner. Runs every spawn rate with every seed and writes the result in a text file
 void runBenchmark(const Network& net, const std::vector<double>& rates, const std::vector<int>& seeds, int totalTicks, const char* fileName)
 {
-	std::FILE* f = std::fopen(fileName, "W");
+	std::FILE* f = nullptr;
+	fopen_s(&f, fileName, "w");
 	if (!f) { std::printf("Could not open %s for writing\n", fileName); return; }
 
 	std::fprintf(f, "Traffic simulation benchmark: %d ticks (%.0f simulated seconds) per run\n\n", totalTicks, totalTicks * tick_s);
 	std::fprintf(f, "%-6s %-5s %8s %8s %13s %10s %11s %7s\n", "Rate", "Seed", "Spawned", "Arrived", "AvgTravel(s)", "Cars/hour", "Collisions", "Missed");
 
-
 	for (double rate : rates)
 	{
-		// Sums for the calculating mean
+		// Sums for calculating the mean of this rate
 		double sumSpawned = 0;
 		double sumArrived = 0;
 		double sumTravelTime = 0;
@@ -832,15 +832,34 @@ void runBenchmark(const Network& net, const std::vector<double>& rates, const st
 		{
 			RunResult r = runSimulation(net, rate, seed, totalTicks, false);
 
-			// Writes the results
-			std::printf(f, "%-6.1f %-5d %8d %8d %13.1f %10.1f %11d %7d\n",
+			// Writes the results of this run
+			std::fprintf(f, "%-6.1f %-5d %8d %8d %13.1f %10.1f %11d %7d\n",
 				rate, seed, r.spawned, r.arrived, r.avgTravelTime,
 				r.throughputPerHour, r.collisions, r.missedSpawns);
-				
-		
+
+			// Adds the results to the running sums
+			sumSpawned += r.spawned;
+			sumArrived += r.arrived;
+			sumTravelTime += r.avgTravelTime;
+			sumThroughput += r.throughputPerHour;
+			sumCollisions += r.collisions;
+			sumMissed += r.missedSpawns;
+		}	
+
+		// Calculates and writes the mean values of this rate (once, after all the seeds)
+		if (!seeds.empty())
+		{
+			double n = (double)seeds.size();
+
+			std::fprintf(f, "%-6.1f %-5s %8.1f %8.1f %13.1f %10.1f %11.1f %7.1f\n\n", rate, "mean", sumSpawned / n,sumArrived / n,
+				sumTravelTime / n,
+				sumThroughput / n,
+				sumCollisions / n,
+				sumMissed / n);
 		}
 	}
 
+	std::fclose(f);	// Closes the file once, after everything is written
 }
 
 
@@ -1305,6 +1324,10 @@ int main()
 
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
+
+
+	
+
 
 	RunResult hard = runSimulation(city, 15.0, 1, 36000, false);	// 15 cars/min per node, one simulated hour
 
