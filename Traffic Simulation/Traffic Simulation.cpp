@@ -1326,6 +1326,8 @@ int main()
 	//----------------------------------------------------------------------------
 
 
+	// FR7 - Benchmark measurements
+	std::printf("\n FR7: Benchmark Measures \n");
 	
 
 
