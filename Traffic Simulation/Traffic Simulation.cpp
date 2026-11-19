@@ -1366,6 +1366,19 @@ int main()
 
 
 
+	// Results file
+	runBenchmark(city, { 1.0, 5.0 }, { 1, 2 }, 6000, "test_results.txt");
+
+	std::FILE* f = nullptr;
+	fopen_s(&f, "test_results.txt", "r");
+
+	char firstLine[200] = "";
+	bool fileOk = f != nullptr && std::fgets(firstLine, sizeof(firstLine), f) != nullptr &&
+		std::string(firstLine).find("benchmark") != std::string::npos;
+
+	if (f) std::fclose(f);
+	check("The results are written in a file", fileOk);
+
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
