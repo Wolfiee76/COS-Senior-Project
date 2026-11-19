@@ -1351,6 +1351,23 @@ int main()
 	
 	
 
+	// One simulated hour - througput in cars per hour is equal to the number of the cars that have arrived
+	RunResult hourRun = runSimulation(city, 2.0, 1, 3600, false);
+	check("Throughput of a one-hour run equals the number of arrived cars", std::fabs(hourRun.throughputPerHour - hourRun.arrived) < 1e-9);
+	check("Average travel time is at least the shortest free-flow time (36 s)", hourRun.avgTravelTime >= 36.0);
+
+
+	// Light load on the network against a heavy load
+	RunResult light = runSimulation(city, 1.0, 1, 12000, false);
+	RunResult heavyRun = runSimulation(city, 15.0, 1, 1200, false);
+	check("A heavy load causes more collisions than a light load", heavyRun.collisions > light.collisions);
+	check("A heavy load causes more spawns to be missed than a light load", heavyRun.missedSpawns > light.missedSpawns);
+	check("A heavy load causes trips to take longerr compared to a light load", heavyRun.avgTravelTime > light.avgTravelTime);
+
+
+
+	//----------------------------------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	RunResult hard = runSimulation(city, 15.0, 1, 36000, false);	// 15 cars/min per node, one simulated hour
 
