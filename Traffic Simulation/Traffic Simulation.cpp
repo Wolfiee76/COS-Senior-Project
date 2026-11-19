@@ -1328,6 +1328,27 @@ int main()
 
 	// FR7 - Benchmark measurements
 	std::printf("\n FR7: Benchmark Measures \n");
+
+	// One car is alone on a 1 km street going at 50 km/h. Free-flow time is 72 seconds
+
+	Network street(2);
+	street.addOneWay(1, 2, 1000, 50);
+	World solo;
+	Vehicle car;
+	car.id = 1; car.route.streetIdx = { 0 }; car.street = 0;
+	car.v0 = 50 / 3.6;
+	car.spawnTick = 0;
+	solo.cars.push_back(car);
+	
+	for (int tick = 0; tick < 2000 && !solo.cars.empty(); ++tick)
+	{
+		solo.currentTick = tick;
+		moveStep(street, solo);
+	}
+
+	double soloTime = solo.arrived == 1 ? solo.travelTimeSum / solo.arrived : -1;
+	check("A lone car on an empty street needs about the free-flow time (72 s up to 1.3x)", soloTime >= 72.0 && soloTime < 1.3 * 72.0);
+	
 	
 
 
