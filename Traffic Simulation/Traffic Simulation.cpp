@@ -1382,6 +1382,22 @@ int main()
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
 
+	// NFR1 test
+	std::printf("\n NFR1: Overall performance \n");
+
+	for (int rep = 1; rep <= 3; ++rep)
+	{
+		auto start = std::chrono::steady_clock::now();
+		RunResult timed = runSimulation(city, 15.0, rep, 36000, false);
+		double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+		std::printf("   run %d: %.2f s for %.0f simulated s (%.0fx real time)\n", rep, seconds, timed.simulatedSeconds, timed.simulatedSeconds / seconds);
+		check("One simulated hour at 15 cars/min takes less than 36 s", seconds < 36.0);
+	}
+
+
+	//----------------------------------------------------------------------------
+	//----------------------------------------------------------------------------
+
 	RunResult hard = runSimulation(city, 15.0, 1, 36000, false);	// 15 cars/min per node, one simulated hour
 
 	std::printf("\n");
