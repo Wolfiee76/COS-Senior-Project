@@ -756,6 +756,8 @@ struct RunResult
 
 	double avgTravelTime = 0;	// Mean time from spawn to final destination translated into seconds
 	double throughputPerHour = 0;	// The completed trips per simulated hour
+
+	std::vector<Collision> collisionLog;	// Every collision of the run which is used for the reproducibility test
 };
 
 
@@ -780,6 +782,7 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 
 	r.ticksRun = totalTicks;		// Srote the results 
 	r.simulatedSeconds = totalTicks * tick_s;		// Converts the ticks into simulated seconds
+	r.collisionLog = world.collisions;
 		
 
 	// Adds up the number of cars that spawned at every spawn node
@@ -790,17 +793,18 @@ RunResult runSimulation(const Network& net, double ratePerMinute, int seed, int 
 	}
 
 	r.arrived = world.arrived;		// Storets the total number of cars that have reached their final destination
-	r.missedSpawns = world.missedSpawns;	// Stores the number of cars that were not able to spwn
-	r.carsOnRoad = (int)world.cars.size();		// Stores how many caras are still on the road.
-	r.collisions = (int)world.collisions.size();
-	r.carsRemoved = world.removedByCrash;
-
+	
 	r.avgTravelTime = (world.arrived > 0)
 		? world.travelTimeSum / world.arrived : 0.0;
 
 
 	r.throughputPerHour = (r.simulatedSeconds > 0)
 		? (world.arrived / r.simulatedSeconds) * 3600.0 : 0.0;
+
+	r.missedSpawns = world.missedSpawns;	// Stores the number of cars that were not able to spwn
+	r.carsOnRoad = (int)world.cars.size();		// Stores how many caras are still on the road.
+	r.collisions = (int)world.collisions.size();
+	r.carsRemoved = world.removedByCrash;
 
 
 	return r;
@@ -1171,7 +1175,16 @@ int main()
 	// Check to see if two runs are identical
 	auto same = [](const RunResult& x, const RunResult& y)
 		{
-			return x.spawned == y.spawned && x.arrived == y.arrived && x.missedSpawns == y.missedSpawns && x.carsOnRoad == y.carsOnRoad;
+			if (x.spawned != y.spawned || x.arrived != y.arrived || x.missedSpawns != y.missedSpawns || x.carsOnRoad != y.carsOnRoad
+				|| x.collisions != y.collisions || x.carsRemoved != y.carsRemoved || x.avgTravelTime != y.avgTravelTime) return false;
+
+			for (size_t i = 0; i < x.collisionLog.size(); ++i)	// The same size because the collision counts are equal
+			{
+				const Collision& p = x.collisionLog[i];
+				const Collision& q = y.collisionLog[i];
+
+				if (p.timeSeconds != q.timeSeconds || p.carA != q.carA || p.carB != q.carB || p.street != q.street) return false;
+			}
 		};
 
 	RunResult shortRun = runSimulation(city, 10.0, 7, 6000, false);		// 6000 ticks are equal to 600 seconds in the simulation
@@ -1185,7 +1198,7 @@ int main()
 	RunResult otherSeed = runSimulation(city, 10.0, 8, 12000, false);		// Another seed
 	check("A different seed gives different resutls", !same(b1, otherSeed));
 
-	check("No cars are lost: spawned = arrived + still on the road", b1.spawned == b1.arrived + b1.carsOnRoad);
+	
 	check("Cars do arrive at their destinations", b1.arrived > 0);
 
 
@@ -1225,7 +1238,9 @@ int main()
 	// Crashed cars now leave the road
 	check("No cars are lost: spawned = arrived + still on the road + removed after crashes", b1.spawned == b1.arrived + b1.carsOnRoad + b1.carsRemoved);
 
-
+	RunResult h1 = runSimulation(city, 15.0, 3, 12000, false);
+	RunResult h2 = runSimulation(city, 15.0, 3, 12000, false);
+	check("Two heavy runs with the same seed have identical collision logs", h1.collisions > 0 && same(h1, h2));
 
 	//----------------------------------------------------------------------------
 	//----------------------------------------------------------------------------
@@ -1352,14 +1367,14 @@ int main()
 	
 
 	// One simulated hour - througput in cars per hour is equal to the number of the cars that have arrived
-	RunResult hourRun = runSimulation(city, 2.0, 1, 3600, false);
+	RunResult hourRun = runSimulation(city, 2.0, 1, 36000, false);
 	check("Throughput of a one-hour run equals the number of arrived cars", std::fabs(hourRun.throughputPerHour - hourRun.arrived) < 1e-9);
 	check("Average travel time is at least the shortest free-flow time (36 s)", hourRun.avgTravelTime >= 36.0);
 
 
 	// Light load on the network against a heavy load
 	RunResult light = runSimulation(city, 1.0, 1, 12000, false);
-	RunResult heavyRun = runSimulation(city, 15.0, 1, 1200, false);
+	RunResult heavyRun = runSimulation(city, 15.0, 1, 12000, false);
 	check("A heavy load causes more collisions than a light load", heavyRun.collisions > light.collisions);
 	check("A heavy load causes more spawns to be missed than a light load", heavyRun.missedSpawns > light.missedSpawns);
 	check("A heavy load causes trips to take longerr compared to a light load", heavyRun.avgTravelTime > light.avgTravelTime);
