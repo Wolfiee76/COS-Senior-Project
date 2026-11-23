@@ -1427,27 +1427,17 @@ int main()
 	small.addOneWay(1, 4, 500, 50);		// Intersection 4 is non existent
 
 
+	check("Streets with non-existing intersections are ignored", small.streets.empty());
+	check("A route with a non-existing intersection is empty", findRoute(city, 0, 5).streetIdx.empty() && findRoute(city, 1, 13).streetIdx.empty());
+	check("A route to an unreachable intersection is empty", findRoute(chain, 3, 1).streetIdx.empty());	// Chain 1 -> 2 -> 3 has no way back
+	check("A route from an intersection to itself is empty", findRoute(city, 5, 5).streetIdx.empty());
 
 
+	RunResult none = runSimulation(city, 0.0, 1, 6000, false);		// Spawn rate of 0
+	check("A spawn rate of zero creates no cars and does not crash", none.spawned == 0 && none.arrived == 0 && none.collisions == 0);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	RunResult zeroTicks = runSimulation(city, 5.0, 1, 0, false);	// Run of 0 ticks
+	check("A run of zero ticks gives empty results without dividing by zero", zeroTicks.spawned == 0 && zeroTicks.avgTravelTime == 0.0 && zeroTicks.throughputPerHour == 0.0);
 
 
 	//----------------------------------------------------------------------------
