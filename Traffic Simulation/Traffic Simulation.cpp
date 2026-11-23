@@ -59,6 +59,8 @@ struct Network
 	// One-way street = one directed edge
 	void addOneWay(int a, int b, double length_m, double limit_kmh)
 	{
+		if (a <1 || a > nodeCount || b < 1 || b > nodeCount) return;	// Ignores the streets  that use intersections which are non existant
+
 		streets.push_back({ a, b, length_m, limit_kmh });    // This stores the street.
 		outgoing[a].push_back((int)streets.size() - 1);    // This remembers the indesx for intersection a.
 	}
@@ -199,6 +201,8 @@ struct Route
 
 Route findRoute(const Network& net, int origin, int destination)
 {
+	if (origin < 1 || origin > net.nodeCount || destination < 1 || destination > net.nodeCount) return Route{};	// Empty route = no route
+
 	std::vector<double> cost(net.nodeCount + 1, 1e18);        // Cheapest known cost in order to reach each node.
 	std::vector<int> previousStreet(net.nodeCount + 1, -1);   // The street that is used to reacch each node.
 	std::vector<bool> done(net.nodeCount + 1, false);         // The finalized node.
@@ -272,6 +276,9 @@ std::mt19937 rng(42);          // Random generator; fixed seed gives the same re
 // This is how many ticccks passed before the next car appears.
 int randomIntervalTicks(double ratePerMinute)
 {
+
+	if (ratePerMinute <= 0) return 1000000000;
+
 	std::exponential_distribution<double> gap(ratePerMinute / 60.0);	// This is because the distibution needs to have the rate per second.
 	int ticks = (int)std::lround(gap(rng) / tick_s);	// This is raandom gap converted into seconds.. The ticks are rounded to the nearest tick
 	return ticks < 1 ? 1 : ticks;		// It's never less than 1 ticck
@@ -1408,6 +1415,39 @@ int main()
 		std::printf("   run %d: %.2f s for %.0f simulated s (%.0fx real time)\n", rep, seconds, timed.simulatedSeconds, timed.simulatedSeconds / seconds);
 		check("One simulated hour at 15 cars/min takes less than 36 s", seconds < 36.0);
 	}
+
+
+	//----------------------------------------------------------------------------
+	//----------------------------------------------------------------------------
+
+	std::printf("\n Wrong or missing data \n");
+
+	Network small(3);
+	small.addOneWay(0, 1, 500, 50);		// Intersection 0 is non existent
+	small.addOneWay(1, 4, 500, 50);		// Intersection 4 is non existent
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	//----------------------------------------------------------------------------
