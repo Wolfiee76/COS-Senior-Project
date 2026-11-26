@@ -1455,6 +1455,7 @@ int main()
 	runSimulation(city, 15.0, 1, 3600, true);	
 
 	const bool show_animation = true;	// Set to false for plain test runs, aka debugging
+	const bool run_benchmark = true;	// Set to false to skip the benchmark
 
 	if (show_animation)
 	{
@@ -1462,6 +1463,12 @@ int main()
 		std::getchar();
 		watchSimulation(city, 15.0, 1, 3600);
 	}
+
+	if (run_benchmark)
+	{
+		runBenchmark(city, { 1.0, 2.0, 5.0, 10.0, 15.0, 20.0 }, { 1, 2, 3, 4, 5 }, 36000, "benchmark_results.txt");
+	}
+	
 
 	return failures;    // If it's 0 then all checks have passed
 }
